@@ -5,6 +5,7 @@ from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 import uuid
+import time
 import telegram
 import telegram.ext
 
@@ -41,15 +42,20 @@ def db_get_redis():
 #   msg_id = 100800,
 #   chat_type = "PUB|PRIV"
 #   chat_name = "EUC Tusovka"
+#   ts = 441818433,
 # }
-
 
 def db_setup_redis():
     r = db_get_redis()
 
     sess_index = r.ft('idx:session')
+    try:
+        sess_index.info()
+    except:
+        sess_index = None
     if sess_index is None:
         logger.info('Creating index for sessions')
+        sess_index = r.ft('idx:session')
         sess_schema = (
             NumericField('usr_id'),
             NumericField('chat_id'),
@@ -62,7 +68,12 @@ def db_setup_redis():
         )
 
     point_index = r.ft('idx:point')
+    try:
+        point_index.info()
+    except:
+        point_index = None
     if point_index is None:
+        point_index = r.ft('idx:point')
         logger.info('Creating index for points')
         point_schema = (
             TextField('sess_id'),
@@ -78,25 +89,28 @@ def db_setup_redis():
 
 def db_get_session(usr_id, chat_id, msg_id, chat_type):
     r = db_get_redis()
-    chat_tp = 'PRIV' if chat_type == 'PRIVATE' else 'PUB'
+    chat_tp = 'PRIV' if chat_type == 'private' else 'PUB'
     idx = r.ft('idx:session')
-    res = idx.search(Query(f'{usr_id}'))
+    res = idx.search(Query(f'@usr_id:[{usr_id} {usr_id}] @chat_id:[{chat_id} {chat_id}] @msg_id:[{msg_id} {msg_id}] @chat_type:{{{chat_tp}}}'))
     logger.info(f'Session search:{res}')
     if res.total == 0:
         logger.info(f'Creating new session for usr_id={usr_id}')
-        uid = uuid.uuid1()
+        uid = f'session:{uuid.uuid1()}'
         session = {
             'usr_id' : usr_id,
             'chat_id' : chat_id,
             'msg_id' : msg_id,
             'chat_type' : chat_tp,
+            'ts' : time.time(), # datetime.datetime.now(datetime.UTC)
         }
-        new_res = r.hset(f'session:{uid}', mapping=session)
-        logger.info(f'New session. usr_id={usr_id}, res={new_res}')
+        new_res = r.hset(uid, mapping=session)
+        logger.info(f'New session. usr_id={usr_id}, uid={uid}, res={new_res}')
+        return uid
     else:
         assert res.total == 1
         doc = res.docs[0]
         logger.info(f'Found old session for usr_id={usr_id}, sess={doc}')
+        return doc.id
 
 
 async def cmd_message(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
@@ -114,8 +128,9 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
             new_location = True
 
     if msg is not None:
-        logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, loc={msg.location}')
-        db_get_session(msg.from_user.id, msg.chat.id, msg.message_id, msg.chat.type)
+        logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
+        uid = db_get_session(msg.from_user.id, msg.chat.id, msg.message_id, msg.chat.type)
+        logger.info(f'Location. sess_uid={uid}')
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your location updated. new={new_location}')
 
 
