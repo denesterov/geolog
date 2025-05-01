@@ -29,11 +29,10 @@ def db_get_redis():
 
 # point = {
 #   sess_id = "uuid",
+#   usr_id = 100500,
 #   ts = 441818433,
-#   loc = {
-#     lat = 33.3,
-#     long = 55.5,
-#   }
+#   latitude = 33.3,
+#   longitude = 55.5,
 # }
 #
 # session = {
@@ -43,6 +42,8 @@ def db_get_redis():
 #   chat_type = "PUB|PRIV"
 #   chat_name = "EUC Tusovka"
 #   ts = 441818433,
+#   length = 953.4,
+#   duration = 580.0,
 # }
 
 def db_setup_redis():
@@ -60,7 +61,6 @@ def db_setup_redis():
             NumericField('usr_id'),
             NumericField('chat_id'),
             NumericField('msg_id'),
-            TagField('chat_type'),
         )
         sess_index.create_index(
             sess_schema,
@@ -76,7 +76,7 @@ def db_setup_redis():
         point_index = r.ft('idx:point')
         logger.info('Creating index for points')
         point_schema = (
-            TextField('sess_id'),
+            TagField('sess_id'),
             NumericField('ts'),
         )
         point_index.create_index(
@@ -87,21 +87,21 @@ def db_setup_redis():
     logger.info('Redis is ready')
 
 
-def db_get_session(usr_id, chat_id, msg_id, chat_type):
+def db_get_session(usr_id, msg_id, tg_chat):
     r = db_get_redis()
-    chat_tp = 'PRIV' if chat_type == 'private' else 'PUB'
     idx = r.ft('idx:session')
-    res = idx.search(Query(f'@usr_id:[{usr_id} {usr_id}] @chat_id:[{chat_id} {chat_id}] @msg_id:[{msg_id} {msg_id}] @chat_type:{{{chat_tp}}}'))
+    res = idx.search(Query(f'@usr_id:[{usr_id} {usr_id}] @chat_id:[{tg_chat.id} {tg_chat.id}] @msg_id:[{msg_id} {msg_id}]'))
     logger.info(f'Session search:{res}')
     if res.total == 0:
         logger.info(f'Creating new session for usr_id={usr_id}')
         uid = f'session:{uuid.uuid1()}'
         session = {
             'usr_id' : usr_id,
-            'chat_id' : chat_id,
+            'chat_id' : tg_chat.id,
             'msg_id' : msg_id,
-            'chat_type' : chat_tp,
-            'ts' : time.time(), # datetime.datetime.now(datetime.UTC)
+            'chat_type' : 'PRIV' if tg_chat.type == 'private' else 'PUB',
+            'chat_name' : tg_chat.title if tg_chat.title is not None else (tg_chat.username if tg_chat.username is not None else '-'),
+            'ts' : time.time(),
         }
         new_res = r.hset(uid, mapping=session)
         logger.info(f'New session. usr_id={usr_id}, uid={uid}, res={new_res}')
@@ -111,6 +111,20 @@ def db_get_session(usr_id, chat_id, msg_id, chat_type):
         doc = res.docs[0]
         logger.info(f'Found old session for usr_id={usr_id}, sess={doc}')
         return doc.id
+
+
+def db_store_location(sess_id, usr_id, loc):
+    r = db_get_redis()
+    uid = f'point:{uuid.uuid1()}'
+    point = {
+        'sess_id' : sess_id,
+        'usr_id' : usr_id,
+        'latitude' : loc.latitude,
+        'longitude' : loc.longitude,
+        'ts' : time.time(),
+    }
+    r.hset(uid, mapping=point)
+    logger.info(f'Location stored. sess_id={sess_id}, usr_id={usr_id}')
 
 
 async def cmd_message(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
@@ -129,13 +143,32 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
 
     if msg is not None:
         logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
-        uid = db_get_session(msg.from_user.id, msg.chat.id, msg.message_id, msg.chat.type)
-        logger.info(f'Location. sess_uid={uid}')
+        sess_id = db_get_session(msg.from_user.id, msg.message_id, msg.chat)
+        db_store_location(sess_id, msg.from_user.id, msg.location)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your location updated. new={new_location}')
 
 
 async def cmd_trace(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
-    await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Hello {update.effective_user.first_name} here is your trace...')
+    usr_id = update.effective_user.id
+    logger.info(f'Trace Chat Command. usr_id={usr_id}')
+    r = db_get_redis()
+    sess_idx = r.ft('idx:session')
+    point_idx = r.ft('idx:point')
+    res = sess_idx.search(Query(f'@usr_id:[{usr_id} {usr_id}]'))
+    logger.info(f'Trace Chat Command. sessions_found={res.total}')
+
+    lines = [f'Hello {update.effective_user.first_name} here is your traces:\n\n']
+    for doc in res.docs:
+        sess_id = doc.id
+        sess_id_tr = sess_id.replace(':', '\\:').replace('-', '\\-')
+        q = f'@sess_id:{{{sess_id_tr}}}'
+        logger.info(f'Trace Chat Command. query={q}')
+        pnt_res = point_idx.search(Query(q).dialect(2))
+        ts = float(doc.ts)
+        tm = time.asctime(time.gmtime(ts))
+        lines.append(f'Trace: {doc.chat_name}, {tm}, {pnt_res.total} points\nid {sess_id}\n\n')
+    
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=''.join(lines))
 
 
 def mainloop():
