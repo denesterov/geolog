@@ -171,6 +171,58 @@ async def cmd_trace(update: telegram.Update, context: telegram.ext.ContextTypes.
     await context.bot.send_message(chat_id=update.effective_chat.id, text=''.join(lines))
 
 
+def fibo(n: int):
+    if n <= 1:
+        return n
+    return fibo(n - 1) + fibo(n - 2)
+
+
+def create_menu(start: int, span: int):
+    logger.info(f'Creating menu: {start} - {span}')
+    keyboard = []
+    for i in range(start, start + span):
+        keyboard.append([telegram.InlineKeyboardButton(f'Option {fibo(i)}', callback_data=f'get {i}')])
+
+    keyboard.append([
+        telegram.InlineKeyboardButton('Prev', callback_data=f'menu {start - span} {span}'),
+        telegram.InlineKeyboardButton('Next', callback_data=f'menu {start + span} {span}'),
+    ])
+
+    return telegram.InlineKeyboardMarkup(keyboard)
+
+async def cmd_test_menu(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
+    #  keyboard = [
+    #    [
+    #         telegram.InlineKeyboardButton("Option 1", callback_data="1"),
+    #         telegram.InlineKeyboardButton("Option 2", callback_data="2"),
+    #     ],
+    #     [telegram.InlineKeyboardButton("Option 3", callback_data="3")],
+    # ]
+    # reply_markup = telegram.InlineKeyboardMarkup(keyboard)
+
+    await update.message.reply_text('Your menu', reply_markup=create_menu(0, 10))
+
+
+async def cmd_test_button(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+
+    # CallbackQueries need to be answered, even if no notification to the user is needed
+    # Some clients may have trouble otherwise. See https://core.telegram.org/bots/api#callbackquery
+    await query.answer()
+
+    data = query.data.split(' ')
+    if data[0] == 'get':
+        num = int(data[1])
+        await query.edit_message_text(text=f'You selected number {num}')
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your number is {fibo(num)}')
+    elif data[0] == 'menu':
+        fromm = int(data[1])
+        to = int(data[2])
+        await query.edit_message_text(text='Your menu', reply_markup=create_menu(fromm, to))
+    else:
+        await query.edit_message_text(text='Wrong menu button')
+
+
 def mainloop():
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -191,6 +243,8 @@ def mainloop():
     application = telegram.ext.ApplicationBuilder().token(BOT_TOKEN).build()
 
     application.add_handler(telegram.ext.CommandHandler('trace', cmd_trace))
+    application.add_handler(telegram.ext.CommandHandler('test_menu', cmd_test_menu))
+    application.add_handler(telegram.ext.CallbackQueryHandler(cmd_test_button))
     application.add_handler(telegram.ext.MessageHandler(telegram.ext.filters.LOCATION & (~telegram.ext.filters.COMMAND), cmd_message))
 
     application.run_polling()
