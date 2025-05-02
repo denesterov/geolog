@@ -179,7 +179,12 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         sess_id = sess_data['id']
         if new_location or db_update_session(sess_data, msg.location, common_ts):
             db_store_location(sess_id, msg.from_user.id, msg.location, common_ts)
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your location updated. new={new_location}')
+
+        usr_name = update.effective_user.first_name if update.effective_user else 'User'
+        if (new_location):
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
+        elif msg.location.live_period is None:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
 
 
 def db_escape_for_exact_search(hash_id):
