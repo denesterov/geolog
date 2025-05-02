@@ -13,12 +13,6 @@ import gpx
 from geopy import distance
 
 
-# import redis.commands.search.aggregation as aggregations
-# import redis.commands.search.reducers as reducers
-# from redis.commands.json.path import Path
-# 
-
-
 logger = None
 redis_db = None
 
@@ -47,6 +41,9 @@ def db_get_redis():
 #   ts = 441818433,
 #   length = 953.4,
 #   duration = 580.0,
+#   last_update = 100900
+#   last_lat = 34.4
+#   last_long = 56.7
 # }
 
 def db_setup_redis():
@@ -287,30 +284,6 @@ async def cmd_debug_tracks(update: telegram.Update, context: telegram.ext.Contex
     await context.bot.send_message(chat_id=update.effective_chat.id, text=''.join(lines))
 
 
-def fibo(n: int):
-    if n <= 1:
-        return n
-    return fibo(n - 1) + fibo(n - 2)
-
-
-def create_menu(start: int, span: int):
-    logger.info(f'Creating menu: {start} - {span}')
-    keyboard = []
-    for i in range(start, start + span):
-        keyboard.append([telegram.InlineKeyboardButton(f'Option {fibo(i)}', callback_data=f'test_menu_item {i}')])
-
-    keyboard.append([
-        telegram.InlineKeyboardButton('Prev', callback_data=f'test_menu {start - span} {span}'),
-        telegram.InlineKeyboardButton('Next', callback_data=f'test_menu {start + span} {span}'),
-    ])
-
-    return telegram.InlineKeyboardMarkup(keyboard)
-
-
-async def cmd_test_menu(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text('Your menu', reply_markup=create_menu(0, 10))
-
-
 async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
 
@@ -319,15 +292,7 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
     await query.answer()
 
     data = query.data.split(' ')
-    if data[0] == 'test_menu_item':
-        num = int(data[1])
-        await query.edit_message_text(text=f'You selected number {num}')
-        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your number is {fibo(num)}')
-    elif data[0] == 'test_menu':
-        fromm = int(data[1])
-        to = int(data[2])
-        await query.edit_message_text(text='Your menu', reply_markup=create_menu(fromm, to))
-    elif data[0] == 'session_menu_item':
+    if data[0] == 'session_menu_item':
         descr, gpx_file = sessions_menu_item(data[1])
         await query.edit_message_text(text=descr)
         await context.bot.send_document(update.effective_chat.id, gpx_file)
@@ -361,7 +326,6 @@ def mainloop():
 
     application.add_handler(telegram.ext.CommandHandler('tracks', cmd_tracks))
     application.add_handler(telegram.ext.CommandHandler('debug_tracks', cmd_debug_tracks))
-    application.add_handler(telegram.ext.CommandHandler('test_menu', cmd_test_menu))
     application.add_handler(telegram.ext.CallbackQueryHandler(cmd_button))
     application.add_handler(telegram.ext.MessageHandler(telegram.ext.filters.LOCATION & (~telegram.ext.filters.COMMAND), cmd_message))
 
