@@ -10,6 +10,7 @@ import datetime
 import telegram
 import telegram.ext
 import gpx
+from geopy import distance
 
 
 # import redis.commands.search.aggregation as aggregations
@@ -90,7 +91,7 @@ def db_setup_redis():
     logger.info('Redis is ready')
 
 
-def db_get_session(usr_id, msg_id, tg_chat):
+def db_get_session(usr_id, msg_id, tg_chat, loc, common_ts):
     r = db_get_redis()
     idx = r.ft('idx:session')
     res = idx.search(Query(f'@usr_id:[{usr_id} {usr_id}] @chat_id:[{tg_chat.id} {tg_chat.id}] @msg_id:[{msg_id} {msg_id}]'))
@@ -104,24 +105,48 @@ def db_get_session(usr_id, msg_id, tg_chat):
             'msg_id' : msg_id,
             'chat_type' : 'PRIV' if tg_chat.type == 'private' else 'PUB',
             'chat_name' : tg_chat.title if tg_chat.title is not None else (tg_chat.username if tg_chat.username is not None else '-'),
-            'ts' : time.time(),
+            'ts' : common_ts,
             'length' : 0.0,
             'duration' : 0.0,
-            'last_lat' : 0.0,
-            'last_long' : 0.0,
-            'last_update' : 0.0,
+            'last_update' : common_ts,
+            'last_lat' : loc.latitude,
+            'last_long' : loc.longitude,
         }
         new_res = r.hset(uid, mapping=session)
         logger.info(f'New session. usr_id={usr_id}, uid={uid}, res={new_res}')
-        return uid
+        session['id'] = uid
+        return session
     else:
         assert res.total == 1
         doc = res.docs[0]
         logger.info(f'Found old session for usr_id={usr_id}, sess={doc}')
-        return doc.id
+        return doc
 
 
-def db_store_location(sess_id, usr_id, loc):
+def db_update_session(sess_data, loc, common_ts):
+    do_store_point = True
+    fields = {}
+
+    last_lat = float(sess_data['last_lat'])
+    last_long = float(sess_data['last_long'])
+    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
+    if delta < 10.0:
+        logger.info(f'db_update_session. skip update by delta. sess_id={sess_data['id']}, delta={delta:.1f}')
+        do_store_point = False
+    else:
+        fields['last_lat'] = loc.latitude
+        fields['last_long'] = loc.longitude
+        fields['length'] = float(sess_data['length']) + delta
+        fields['duration'] = float(sess_data['duration']) + (common_ts - float(sess_data['last_update']))
+
+    fields['last_update'] = common_ts
+
+    r = db_get_redis()
+    r.hset(sess_data['id'], mapping=fields)
+    return do_store_point
+
+
+def db_store_location(sess_id, usr_id, loc, common_ts):
     r = db_get_redis()
     uid = f'point:{uuid.uuid1()}'
     point = {
@@ -129,7 +154,7 @@ def db_store_location(sess_id, usr_id, loc):
         'usr_id' : usr_id,
         'latitude' : loc.latitude,
         'longitude' : loc.longitude,
-        'ts' : time.time(),
+        'ts' : common_ts,
     }
     r.hset(uid, mapping=point)
     logger.info(f'Location stored. sess_id={sess_id}, usr_id={usr_id}')
@@ -151,8 +176,11 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
 
     if msg is not None:
         logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
-        sess_id = db_get_session(msg.from_user.id, msg.message_id, msg.chat)
-        db_store_location(sess_id, msg.from_user.id, msg.location)
+        common_ts = time.time()
+        sess_data = db_get_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
+        sess_id = sess_data['id']
+        if new_location or db_update_session(sess_data, msg.location, common_ts):
+            db_store_location(sess_id, msg.from_user.id, msg.location, common_ts)
         await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Your location updated. new={new_location}')
 
 

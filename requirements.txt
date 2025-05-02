@@ -1,3 +1,4 @@
 redis
 python-telegram-bot
 gpx
+geopy
