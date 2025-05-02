@@ -1,9 +1,13 @@
 ## Geo logging Telegram Bot
 
 ## How to use
-* put you bot token int bot_token.txt file
+### Start the bot
+* put you bot token into `bot_token.txt` file next to python sources
 * `make setup`
 * `make run`
+### Telegram
+* share you location with bot in private or group chat
+* use bot's menu to download you tracks as GPX
 
 ## Starting Redis Stack
 ```
