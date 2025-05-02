@@ -203,13 +203,16 @@ def sessions_menu_item(sess_id: str):
     gpx_inst.name = 'Telegram GPS track'
     gpx_inst.creator='Geograph'
     gpx_inst.descr = 'This GPX file was created by Geograph Telegram Bot'
+    gpx_inst.tracks.append(gpx.track.Track())
+    gpx_inst.tracks[0].segments.append(gpx.track_segment.TrackSegment())
+    segment = gpx_inst.tracks[0].segments[0]
 
     for pnt in pnt_res.docs:
         wp = gpx.Waypoint()
         wp.lat = float(pnt.latitude)
         wp.lon = float(pnt.longitude)
         wp.time = datetime.datetime.fromtimestamp(round(float(pnt.ts), 1))
-        gpx_inst.waypoints.append(wp)
+        segment.append(wp)
 
     sess_len = float(sess_data['length']) / 1000.0
     sess_dur = float(sess_data['duration']) / 60.0
