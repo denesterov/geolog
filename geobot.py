@@ -252,6 +252,7 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
         navig_butts.append(telegram.InlineKeyboardButton('Prev', callback_data=f'session_menu {offset - page} {page}'))
     if len(res.docs) >= page:
         navig_butts.append(telegram.InlineKeyboardButton('Next', callback_data=f'session_menu {offset + page} {page}'))
+    navig_butts.append(telegram.InlineKeyboardButton('Cancel', callback_data=f'session_cancel'))
     keyboard.append(navig_butts)
 
     return (f'Records from {offset} to {min(offset + page, res.total)} of {res.total}', telegram.InlineKeyboardMarkup(keyboard))
@@ -306,6 +307,8 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
         logger.info(f'cmd_button. session_menu. usr_id={usr_id}')
         menu_text, menu = sessions_menu_create(usr_id, int(data[1]), int(data[2]))
         await query.edit_message_text(text=menu_text, reply_markup=menu)
+    elif data[0] == 'session_cancel':
+        await context.bot.deleteMessage(message_id = update.effective_message.id, chat_id=update.effective_chat.id)
     else:
         await query.edit_message_text(text='Wrong menu button')
 
