@@ -176,7 +176,8 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
 
     if msg is not None:
         logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
-        common_ts = time.time()
+        dt = msg.edit_date if msg.edit_date is not None else msg.date
+        common_ts = dt.timestamp() if dt else time.time()
         sess_data = db_get_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
         sess_id = sess_data['id']
         if new_location or db_update_session(sess_data, msg.location, common_ts):
