@@ -11,4 +11,4 @@ COPY . .
 
 RUN make setup
 
-CMD ["make", "run"]
+CMD ["make", "run_env_token"]

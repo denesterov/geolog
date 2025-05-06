@@ -15,3 +15,6 @@ run: venv
 	@TELE_BOT_TOKEN_M=$(shell cat bot_token.txt); \
 	export TELE_BOT_TOKEN=$$TELE_BOT_TOKEN_M; \
 	. venv/bin/activate; python3 geobot.py
+
+run_env_token: venv
+	. venv/bin/activate; python3 geobot.py

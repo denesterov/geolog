@@ -11,6 +11,7 @@ services:
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - TELE_BOT_TOKEN=${TELE_BOT_TOKEN}
     restart: unless-stopped
 
   redis:
