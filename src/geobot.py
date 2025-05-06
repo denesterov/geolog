@@ -171,7 +171,7 @@ def db_get_track(sess_id: str):
 
     point_idx = r.ft('idx:point')
     offset = 0
-    page_size = 4
+    page_size = 100
     limit = 10000
     points = []
     while True:
