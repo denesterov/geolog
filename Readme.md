@@ -12,7 +12,7 @@ or just `docker start redis-stack` later
 
 Start the bot:
 * `make setup`
-* put you bot token into `bot_token.txt` file next to python sources
+* put your bot token into `bot_token.txt` file next to python sources (handy for developer usage)
 * `make run`
 OR
 * `TELE_BOT_TOKEN=<Your_Telegram_Token> make run_env_token`
@@ -24,5 +24,5 @@ TELE_BOT_TOKEN=<Your_Telegram_Token> docker-compose up --build
 ```
 
 ### Telegram
-* share you location with bot in private or group chat
-* use bot's menu to download you tracks as GPX
+* Share you location with bot in a private or group chat
+* Use bot's menu to download you tracks as GPX
