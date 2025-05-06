@@ -1,4 +1,5 @@
 import os
+import math
 import logging
 import redis
 from redis.commands.search.field import TextField, NumericField, TagField
@@ -162,6 +163,36 @@ def db_store_location(sess_id, usr_id, loc, common_ts):
     logger.info(f'Location stored. sess_id={sess_id}, usr_id={usr_id}')
 
 
+def db_get_track(sess_id: str):
+    logger.info(f'db_get_track. sess_id={sess_id}')
+
+    r = db_get_redis()
+    sess_data = r.hgetall(sess_id)
+
+    point_idx = r.ft('idx:point')
+    offset = 0
+    page_size = 4
+    limit = 10000
+    points = []
+    while True:
+        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).paging(offset, page_size)
+        pnt_res = point_idx.search(q)
+        logger.info(f'db_get_track. points={len(pnt_res.docs)}, total={pnt_res.total}')
+        for pnt in pnt_res.docs:
+            points.append((float(pnt.latitude), float(pnt.longitude), round(float(pnt.ts), 1)))
+        offset += page_size
+        if offset >= pnt_res.total:
+            break
+        assert len(points) <= limit
+
+    info = {
+        'length' : float(sess_data['length']),
+        'duration' : float(sess_data['duration']),
+        'timestamp' : float(sess_data['ts']),
+    }
+    return info, points
+
+
 async def cmd_message(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     msg = None
     new_location = None
@@ -197,15 +228,23 @@ def db_escape_for_exact_search(hash_id):
     return f'{{{escaped}}}'
 
 
+def duration_to_human(dur: float):
+    days = int(dur / 86400)
+    days_rem = math.fmod(dur, 86400)
+    hours = int(days_rem / 3600)
+    hours_rem = math.fmod(days_rem, 3600)
+    mins = int(hours_rem / 60)
+    result = (f'{days} days ' if days > 0 else '')
+    result += (f'{hours} hours' if hours > 0 or days > 0 else '')
+    result += (' ' if hours > 0 and days == 0 else '')
+    result += (f'{mins} minutes' if days == 0 else '')
+    return result
+
+
 def sessions_menu_item(sess_id: str):
     logger.info(f'sessions_menu_item. sess_id={sess_id}')
-    r = db_get_redis()
-    sess_data = r.hgetall(sess_id)
-    logger.info(f'sessions_menu_item. data={sess_data}')
 
-    point_idx = r.ft('idx:point')
-    pnt_res = point_idx.search(Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2))
-    logger.info(f'sessions_menu_item. points={pnt_res.total}')
+    info, points = db_get_track(sess_id)
 
     gpx_inst = gpx.GPX()
     gpx_inst.name = 'Telegram GPS track'
@@ -215,19 +254,18 @@ def sessions_menu_item(sess_id: str):
     gpx_inst.tracks[0].segments.append(gpx.track_segment.TrackSegment())
     segment = gpx_inst.tracks[0].segments[0]
 
-    for pnt in pnt_res.docs:
+    for (lat, long, ts) in points:
         wp = gpx.Waypoint()
-        wp.lat = float(pnt.latitude)
-        wp.lon = float(pnt.longitude)
-        wp.time = datetime.datetime.fromtimestamp(round(float(pnt.ts), 1))
+        wp.lat = lat
+        wp.lon = long
+        wp.time = datetime.datetime.fromtimestamp(ts)
         segment.append(wp)
 
-    sess_len = float(sess_data['length']) / 1000.0
-    sess_dur = float(sess_data['duration']) / 60.0
-    descr = f'Here is your GPX file\nLength {sess_len:.1f} km, duration {sess_dur:.0f} minutes, has {pnt_res.total} points'
+    sess_len = info['length'] / 1000.0
+    sess_dur = info['duration']
+    descr = f'Here is your GPX file\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, has {len(points)} points'
 
-    sess_ts = float(sess_data['ts'])
-    sess_tm = datetime.datetime.fromtimestamp(sess_ts)
+    sess_tm = datetime.datetime.fromtimestamp(info['timestamp'])
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
 
     return (descr, telegram.InputFile(gpx_inst.to_string(), file_name))
@@ -247,9 +285,7 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
         sess_id = doc.id
         length = float(doc.length) / 1000.0
         age = time.time() - float(doc.ts)
-        age_days = int(age / 86400)
-        age_hours = (age - age_days * 86400) / 3600
-        descr = f'Record {length:.1f} km, ' + (f'{age_days:.0f} days' if age_days > 0 else '') + f'{age_hours:.0f} hours ago'
+        descr = f'{duration_to_human(age)} ago, {length:.1f} km'
         keyboard.append([telegram.InlineKeyboardButton(descr, callback_data=f'session_menu_item {sess_id}')])
 
     navig_butts = []
