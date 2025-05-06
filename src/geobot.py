@@ -23,7 +23,7 @@ def db_get_redis():
         port = os.environ.get('REDIS_PORT')
         host = host if host is not None else 'localhost'
         port = port if port is not None else 6379
-        logger.info('def db_get_redis. host={host}, port={port}')
+        logger.info(f'db_get_redis. host={host}, port={port}')
         redis_db = redis.Redis(host=host, port=port, db=0, decode_responses=True)
     # todo: Check connection state and reconnect if needed
     return redis_db
@@ -327,11 +327,11 @@ def mainloop():
     logger = logging.getLogger(__name__)
 
     BOT_TOKEN = os.environ.get('TELE_BOT_TOKEN')
-    if BOT_TOKEN is None:
+    if BOT_TOKEN is not None and BOT_TOKEN != '':
+        logger.info('Bot token is set!')
+    else:
         logger.error('Bot token env var is not set (TELE_BOT_TOKEN)!')
         exit(1)
-    else:
-        logger.info('Bot token is set!')
 
     db_setup_redis()
 
