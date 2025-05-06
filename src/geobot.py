@@ -19,7 +19,12 @@ redis_db = None
 def db_get_redis():
     global redis_db
     if redis_db is None:
-        redis_db = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+        host = os.environ.get('REDIS_HOST')
+        port = os.environ.get('REDIS_PORT')
+        host = host if host is not None else 'localhost'
+        port = port if port is not None else 6379
+        logger.info('def db_get_redis. host={host}, port={port}')
+        redis_db = redis.Redis(host=host, port=port, db=0, decode_responses=True)
     # todo: Check connection state and reconnect if needed
     return redis_db
 
@@ -128,7 +133,7 @@ def db_update_session(sess_data, loc, common_ts):
     last_long = float(sess_data['last_long'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
     if delta < 10.0:
-        logger.info(f'db_update_session. skip update by delta. sess_id={sess_data['id']}, delta={delta:.1f}')
+        logger.info(f'db_update_session. skip update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
         do_store_point = False
     else:
         fields['last_lat'] = loc.latitude
