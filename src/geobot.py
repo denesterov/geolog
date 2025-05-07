@@ -141,8 +141,7 @@ def db_update_session(sess_data, loc, common_ts):
         fields['last_long'] = loc.longitude
         fields['length'] = float(sess_data['length']) + delta
         fields['duration'] = float(sess_data['duration']) + (common_ts - float(sess_data['last_update']))
-
-    fields['last_update'] = common_ts
+        fields['last_update'] = common_ts
 
     r = db_get_redis()
     r.hset(sess_data['id'], mapping=fields)
@@ -263,7 +262,9 @@ def sessions_menu_item(sess_id: str):
 
     sess_len = info['length'] / 1000.0
     sess_dur = info['duration']
-    descr = f'Here is your GPX file\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, has {len(points)} points'
+
+    ts_str = time.asctime(time.gmtime(info['timestamp']))
+    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {len(points)} points'
 
     sess_tm = datetime.datetime.fromtimestamp(info['timestamp'])
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
@@ -326,7 +327,7 @@ async def cmd_debug_tracks(update: telegram.Update, context: telegram.ext.Contex
         logger.info(f'cmd_debug_tracks. points={pnt_res.total}')
         ts = float(doc.ts)
         tm = time.asctime(time.gmtime(ts))
-        lines.append(f'Track: {doc.chat_name}, {pnt_res.total} points\n{sess_id}\n{tm}\n\n')
+        lines.append(f'Track: {sess_id}\n{tm}\nChat: {doc.chat_name}\nLength {round(float(doc.length), 1)} m, duration {doc.duration} s, {pnt_res.total} points\n\n')
     
     await context.bot.send_message(chat_id=update.effective_chat.id, text=''.join(lines))
 
