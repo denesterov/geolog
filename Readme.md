@@ -20,7 +20,7 @@ OR
 ### Docker start
 Go to `deploy` folder and then:
 ```
-TELE_BOT_TOKEN=<Your_Telegram_Token> docker-compose up --build
+TELE_BOT_TOKEN=<Your_Telegram_Token> docker-compose up --build -d
 ```
 
 ### Telegram
