@@ -133,7 +133,7 @@ def db_update_session(sess_data, loc, common_ts):
     last_lat = float(sess_data['last_lat'])
     last_long = float(sess_data['last_long'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-    if delta < 10.0:
+    if delta < 20.0:
         logger.info(f'db_update_session. skip update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
         do_store_point = False
     else:
