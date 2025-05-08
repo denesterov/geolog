@@ -307,6 +307,12 @@ async def cmd_tracks(update: telegram.Update, context: telegram.ext.ContextTypes
     await update.message.reply_text(menu_text, reply_markup=menu)
 
 
+bot_start_time = time.monotonic()
+async def cmd_debug_ping(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
+    uptime = time.monotonic() - bot_start_time
+    await context.bot.send_message(chat_id=update.effective_chat.id, text=f'Bot is alive! Uptime is {uptime / 3600.0:.1f} hours')
+
+
 async def cmd_debug_tracks(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
     logger.info(f'cmd_debug_tracks. usr_id={usr_id}')
@@ -376,6 +382,7 @@ def mainloop():
 
     application.add_handler(telegram.ext.CommandHandler('tracks', cmd_tracks))
     application.add_handler(telegram.ext.CommandHandler('debug_tracks', cmd_debug_tracks))
+    application.add_handler(telegram.ext.CommandHandler('debug_ping', cmd_debug_ping))
     application.add_handler(telegram.ext.CallbackQueryHandler(cmd_button))
     application.add_handler(telegram.ext.MessageHandler(telegram.ext.filters.LOCATION & (~telegram.ext.filters.COMMAND), cmd_message))
 
