@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   bot:
     build:
@@ -21,8 +19,8 @@ services:
       - "6379:6379"
       - "8001:8001"
     volumes:
-      - redis_data:/data
+      - ./redis_data:/data
     restart: unless-stopped
 
-volumes:
-  redis_data:
+# volumes:
+#    redis_data:
