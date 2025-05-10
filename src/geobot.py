@@ -174,7 +174,7 @@ def db_get_track(sess_id: str):
     limit = 10000
     points = []
     while True:
-        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).paging(offset, page_size)
+        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).sort_by('ts', asc=True).paging(offset, page_size)
         pnt_res = point_idx.search(q)
         logger.info(f'db_get_track. points={len(pnt_res.docs)}, total={pnt_res.total}')
         for pnt in pnt_res.docs:
@@ -303,7 +303,7 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
 async def cmd_tracks(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
     logger.info(f'cmd_tracks. usr_id={usr_id}')
-    menu_text, menu = sessions_menu_create(usr_id, 0, 3)
+    menu_text, menu = sessions_menu_create(usr_id, 0, 5)
     await update.message.reply_text(menu_text, reply_markup=menu)
 
 
