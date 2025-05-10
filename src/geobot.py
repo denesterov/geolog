@@ -240,11 +240,7 @@ def duration_to_human(dur: float):
     return result
 
 
-def sessions_menu_item(sess_id: str):
-    logger.info(f'sessions_menu_item. sess_id={sess_id}')
-
-    info, points = db_get_track(sess_id)
-
+def create_gpx_data(points):
     gpx_inst = gpx.GPX()
     gpx_inst.name = 'Telegram GPS track'
     gpx_inst.creator='Geograph'
@@ -259,6 +255,16 @@ def sessions_menu_item(sess_id: str):
         wp.lon = long
         wp.time = datetime.datetime.fromtimestamp(ts)
         segment.append(wp)
+    
+    return gpx_inst.to_string()
+
+
+def sessions_menu_item(sess_id: str):
+    logger.info(f'sessions_menu_item. sess_id={sess_id}')
+
+    info, points = db_get_track(sess_id)
+
+    gpx_data = create_gpx_data(points)
 
     sess_len = info['length'] / 1000.0
     sess_dur = info['duration']
@@ -269,7 +275,7 @@ def sessions_menu_item(sess_id: str):
     sess_tm = datetime.datetime.fromtimestamp(info['timestamp'])
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
 
-    return (descr, telegram.InputFile(gpx_inst.to_string(), file_name))
+    return (descr, telegram.InputFile(gpx_data, file_name))
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
