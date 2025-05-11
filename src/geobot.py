@@ -13,8 +13,9 @@ import telegram.ext
 import gpx
 from geopy import distance
 
-MIN_GEO_DELTA = 30.0 # Minimal delta in meters for next track point to be recorded
+MIN_GEO_DELTA = 25.0 # Minimal delta in meters for next track point to be recorded
 MAX_SPEED = 20.0 # Maximum speed, m/s
+AFTER_PAUSE_TIME = 180.0 # Timeout after wich track is paused, if there is not movement 
 
 logger = None
 redis_db = None
@@ -139,30 +140,47 @@ def db_update_session(sess_data, loc, common_ts):
     time_period = common_ts - float(sess_data['last_update'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
     velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
-    if delta < MIN_GEO_DELTA or velocity > MAX_SPEED:
-        logger.info(f'db_update_session. skip coord update by delta/speed. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}')
 
-        fields = {}
-        if int(sess_data['track_segm_len']) > 0:
-            fields['track_segm_idx'] = int(sess_data['track_segm_idx']) + 1
-            fields['track_segm_len'] = 0
-            r = db_get_redis()
-            r.hset(sess_data['id'], mapping=fields)
-        return False
+    def finish_segment(sess_data):
+        if int(sess_data['track_segm_len']) == 0:
+            return None
+        segm_id = int(sess_data['track_segm_idx'])
+        logger.info(f'db_update_session. finishing segment. sess_id={sess_data["id"]}, segm_id={segm_id}')
+        return {
+            'track_segm_idx' : segm_id + 1,
+            'track_segm_len' : 0,
+            'last_update' : common_ts,
+        }
+
+    fields = None
+    result = None
+    if delta < MIN_GEO_DELTA:
+        logger.info(f'db_update_session. skip coord update by idle. sess_id={sess_data["id"]}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
+        if time_period > AFTER_PAUSE_TIME:
+            fields = finish_segment(sess_data)
+            pass
+        result = False
+    elif velocity > MAX_SPEED:
+        logger.info(f'db_update_session. skip coord update by overspeed. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
+        fields = finish_segment(sess_data)
+        result = False
     else:
-        logger.debug(f'db_update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}')
+        logger.info(f'db_update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
+        fields = {
+            'last_lat' : loc.latitude,
+            'last_long' : loc.longitude,
+            'length' : float(sess_data['length']) + delta,
+            'duration' : float(sess_data['duration']) + (common_ts - float(sess_data['last_update'])),
+            'last_update' : common_ts,
+            'track_segm_len' : int(sess_data['track_segm_len']) + 1,
+        }
+        result = True
 
-        fields = {}
-        fields['last_lat'] = loc.latitude
-        fields['last_long'] = loc.longitude
-        fields['length'] = float(sess_data['length']) + delta
-        fields['duration'] = float(sess_data['duration']) + (common_ts - float(sess_data['last_update']))
-        fields['last_update'] = common_ts
-        fields['track_segm_len'] = int(sess_data['track_segm_len']) + 1
-
+    if fields is not None:
         r = db_get_redis()
+        fields['last_update'] = common_ts
         r.hset(sess_data['id'], mapping=fields)
-        return True
+    return result
 
 
 def db_store_location(sess_id, usr_id, loc, common_ts, segm_id):
