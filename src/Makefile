@@ -3,7 +3,7 @@
 venv:
 	python3 -m venv venv
 
-.PHONY: setup, run, cleanup
+.PHONY: setup run cleanup
 
 setup: venv
 	. venv/bin/activate; pip install -r requirements.txt
