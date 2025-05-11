@@ -15,7 +15,7 @@ from geopy import distance
 
 MIN_GEO_DELTA = 25.0 # Minimal delta in meters for next track point to be recorded
 MAX_SPEED = 10.0 # Maximum speed, m/s
-AFTER_PAUSE_TIME = 180.0 # Timeout after wich track is paused, if there is not movement 
+AFTER_PAUSE_TIME = 180.0 # Timeout after wich track is paused, if there is no movement 
 
 logger = None
 redis_db = None
@@ -210,7 +210,7 @@ def db_get_track(sess_id: str):
     limit = 10000
     raw_points = []
     while True:
-        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).paging(offset, page_size)
+        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).sort_by('ts', asc=True).paging(offset, page_size)
         pnt_res = point_idx.search(q)
         logger.info(f'db_get_track. points={len(pnt_res.docs)}, total={pnt_res.total}')
         raw_points += \
