@@ -198,7 +198,7 @@ def db_get_track(sess_id: str):
             [(float(pnt.latitude),
               float(pnt.longitude),
               round(float(pnt.ts), 1),
-              pnt.segm_id if pnt.segm_id is not None else 1)
+              pnt.segm_id if hasattr(pnt, 'segm_id') else 1)
                 for pnt in pnt_res.docs]
         offset += page_size
         if offset >= pnt_res.total:
@@ -209,15 +209,16 @@ def db_get_track(sess_id: str):
     for pnt in raw_points:
         lat, lon, ts, segm_id = pnt
         points = None
-        if segm_id in by_segm_id.key():
+        if segm_id in by_segm_id.keys():
             points = by_segm_id[segm_id]
         else:
             points = []
-            points[segm_id] = points
+            by_segm_id[segm_id] = points
+        points.append((lat, lon, ts))
     
     points = []
     for segm_id in sorted(by_segm_id.keys()):
-        points += by_segm_id[segm_id]
+        points.append(by_segm_id[segm_id])
 
     info = {
         'length' : float(sess_data['length']),
