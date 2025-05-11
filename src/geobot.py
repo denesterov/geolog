@@ -37,6 +37,7 @@ def db_get_redis():
 #   ts = 441818433,
 #   latitude = 33.3,
 #   longitude = 55.5,
+#   segm_id = 4,
 # }
 #
 # session = {
@@ -45,12 +46,14 @@ def db_get_redis():
 #   msg_id = 100800,
 #   chat_type = "PUB|PRIV"
 #   chat_name = "EUC Tusovka"
-#   ts = 441818433,
-#   length = 953.4,
-#   duration = 580.0,
-#   last_update = 100900
-#   last_lat = 34.4
-#   last_long = 56.7
+#   ts = 441818433, # timestamp of the recording start, UTC
+#   length = 953.4, # total recorded length in meters
+#   duration = 580.0, # total duration in seconds
+#   last_update = 100900, # last update timestamp
+#   last_lat = 34.4, # last recorded point coordinates; to filter jitter and limit speed
+#   last_long = 56.7,
+#   track_segm_idx = 1, # current track segment id
+#   track_segm_len = 5, # current track segment length, points
 # }
 
 def db_setup_redis():
@@ -115,6 +118,8 @@ def db_get_session(usr_id, msg_id, tg_chat, loc, common_ts):
             'last_update' : common_ts,
             'last_lat' : loc.latitude,
             'last_long' : loc.longitude,
+            'track_segm_idx' : 1,
+            'track_segm_len' : 0,
         }
         new_res = r.hset(uid, mapping=session)
         logger.info(f'New session. usr_id={usr_id}, uid={uid}, res={new_res}')
@@ -130,24 +135,36 @@ def db_get_session(usr_id, msg_id, tg_chat, loc, common_ts):
 def db_update_session(sess_data, loc, common_ts):
     last_lat = float(sess_data['last_lat'])
     last_long = float(sess_data['last_long'])
+    time_period = common_ts - float(sess_data['last_update'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
+    velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
     if delta < MIN_GEO_DELTA:
-        logger.info(f'db_update_session. skip update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
+        logger.info(f'db_update_session. skip coord update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
+
+        fields = {}
+        if int(sess_data['track_segm_len']) > 0:
+            fields['track_segm_idx'] = int(sess_data['track_segm_idx']) + 1
+            fields['track_segm_len'] = 0
+            r = db_get_redis()
+            r.hset(sess_data['id'], mapping=fields)
         return False
     else:
+        logger.debug(f'db_update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity*3.6:.1f}')
+
         fields = {}
         fields['last_lat'] = loc.latitude
         fields['last_long'] = loc.longitude
         fields['length'] = float(sess_data['length']) + delta
         fields['duration'] = float(sess_data['duration']) + (common_ts - float(sess_data['last_update']))
         fields['last_update'] = common_ts
+        fields['track_segm_len'] = int(sess_data['track_segm_len']) + 1
 
         r = db_get_redis()
         r.hset(sess_data['id'], mapping=fields)
         return True
 
 
-def db_store_location(sess_id, usr_id, loc, common_ts):
+def db_store_location(sess_id, usr_id, loc, common_ts, segm_id):
     r = db_get_redis()
     uid = f'point:{uuid.uuid1()}'
     point = {
@@ -156,6 +173,7 @@ def db_store_location(sess_id, usr_id, loc, common_ts):
         'latitude' : loc.latitude,
         'longitude' : loc.longitude,
         'ts' : common_ts,
+        'segm_id' : segm_id
     }
     r.hset(uid, mapping=point)
     logger.info(f'Location stored. sess_id={sess_id}, usr_id={usr_id}')
@@ -171,24 +189,42 @@ def db_get_track(sess_id: str):
     offset = 0
     page_size = 100
     limit = 10000
-    points = []
+    raw_points = []
     while True:
-        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).sort_by('ts', asc=True).paging(offset, page_size)
+        q = Query(f'@sess_id:{db_escape_for_exact_search(sess_id)}').dialect(2).paging(offset, page_size)
         pnt_res = point_idx.search(q)
         logger.info(f'db_get_track. points={len(pnt_res.docs)}, total={pnt_res.total}')
-        for pnt in pnt_res.docs:
-            points.append((float(pnt.latitude), float(pnt.longitude), round(float(pnt.ts), 1)))
+        raw_points += \
+            [(float(pnt.latitude),
+              float(pnt.longitude),
+              round(float(pnt.ts), 1),
+              pnt.segm_id if pnt.segm_id is not None else 1)
+                for pnt in pnt_res.docs]
         offset += page_size
         if offset >= pnt_res.total:
             break
-        assert len(points) <= limit
+        assert len(raw_points) <= limit
+
+    by_segm_id = {}
+    for pnt in raw_points:
+        lat, lon, ts, segm_id = pnt
+        points = None
+        if segm_id in by_segm_id.key():
+            points = by_segm_id[segm_id]
+        else:
+            points = []
+            points[segm_id] = points
+    
+    points = []
+    for segm_id in sorted(by_segm_id.keys()):
+        points += by_segm_id[segm_id]
 
     info = {
         'length' : float(sess_data['length']),
         'duration' : float(sess_data['duration']),
         'timestamp' : float(sess_data['ts']),
     }
-    return info, points
+    return info, points, len(raw_points)
 
 
 async def cmd_message(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
@@ -210,9 +246,10 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         dt = msg.edit_date if msg.edit_date is not None else msg.date
         common_ts = dt.timestamp() if dt else time.time()
         sess_data = db_get_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
-        sess_id = sess_data['id']
         if new_location or db_update_session(sess_data, msg.location, common_ts):
-            db_store_location(sess_id, msg.from_user.id, msg.location, common_ts)
+            sess_id = sess_data['id']
+            segm_id = sess_data['track_segm_idx']
+            db_store_location(sess_id, msg.from_user.id, msg.location, common_ts, segm_id)
 
         usr_name = update.effective_user.first_name if update.effective_user else 'User'
         if (new_location):
@@ -245,15 +282,16 @@ def create_gpx_data(points):
     gpx_inst.creator='Geograph'
     gpx_inst.descr = 'This GPX file was created by Geograph Telegram Bot'
     gpx_inst.tracks.append(gpx.track.Track())
-    gpx_inst.tracks[0].segments.append(gpx.track_segment.TrackSegment())
-    segment = gpx_inst.tracks[0].segments[0]
 
-    for (lat, long, ts) in points:
-        wp = gpx.Waypoint()
-        wp.lat = lat
-        wp.lon = long
-        wp.time = datetime.datetime.fromtimestamp(ts)
-        segment.append(wp)
+    for segm_points in points:
+        gpx_inst.tracks[0].segments.append(gpx.track_segment.TrackSegment())
+        segment = gpx_inst.tracks[0].segments[-1]
+        for (lat, long, ts) in segm_points:
+            wp = gpx.Waypoint()
+            wp.lat = lat
+            wp.lon = long
+            wp.time = datetime.datetime.fromtimestamp(ts)
+            segment.append(wp)
     
     return gpx_inst.to_string()
 
@@ -261,7 +299,7 @@ def create_gpx_data(points):
 def sessions_menu_item(sess_id: str):
     logger.info(f'sessions_menu_item. sess_id={sess_id}')
 
-    info, points = db_get_track(sess_id)
+    info, points, total_points = db_get_track(sess_id)
 
     gpx_data = create_gpx_data(points)
 
@@ -269,7 +307,7 @@ def sessions_menu_item(sess_id: str):
     sess_dur = info['duration']
 
     ts_str = time.asctime(time.gmtime(info['timestamp']))
-    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {len(points)} points'
+    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {total_points} points'
 
     sess_tm = datetime.datetime.fromtimestamp(info['timestamp'])
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
