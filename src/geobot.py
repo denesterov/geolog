@@ -13,6 +13,7 @@ import telegram.ext
 import gpx
 from geopy import distance
 
+MIN_GEO_DELTA = 30.0 # Minimal delta in meters for next track point to be recorded
 
 logger = None
 redis_db = None
@@ -127,25 +128,23 @@ def db_get_session(usr_id, msg_id, tg_chat, loc, common_ts):
 
 
 def db_update_session(sess_data, loc, common_ts):
-    do_store_point = True
-    fields = {}
-
     last_lat = float(sess_data['last_lat'])
     last_long = float(sess_data['last_long'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-    if delta < 20.0:
+    if delta < MIN_GEO_DELTA:
         logger.info(f'db_update_session. skip update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
-        do_store_point = False
+        return False
     else:
+        fields = {}
         fields['last_lat'] = loc.latitude
         fields['last_long'] = loc.longitude
         fields['length'] = float(sess_data['length']) + delta
         fields['duration'] = float(sess_data['duration']) + (common_ts - float(sess_data['last_update']))
         fields['last_update'] = common_ts
 
-    r = db_get_redis()
-    r.hset(sess_data['id'], mapping=fields)
-    return do_store_point
+        r = db_get_redis()
+        r.hset(sess_data['id'], mapping=fields)
+        return True
 
 
 def db_store_location(sess_id, usr_id, loc, common_ts):
