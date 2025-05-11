@@ -14,6 +14,7 @@ import gpx
 from geopy import distance
 
 MIN_GEO_DELTA = 30.0 # Minimal delta in meters for next track point to be recorded
+MAX_SPEED = 20.0 # Maximum speed, m/s
 
 logger = None
 redis_db = None
@@ -138,8 +139,8 @@ def db_update_session(sess_data, loc, common_ts):
     time_period = common_ts - float(sess_data['last_update'])
     delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
     velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
-    if delta < MIN_GEO_DELTA:
-        logger.info(f'db_update_session. skip coord update by delta. sess_id={sess_data["id"]}, delta={delta:.1f}')
+    if delta < MIN_GEO_DELTA or velocity > MAX_SPEED:
+        logger.info(f'db_update_session. skip coord update by delta/speed. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}')
 
         fields = {}
         if int(sess_data['track_segm_len']) > 0:
@@ -149,7 +150,7 @@ def db_update_session(sess_data, loc, common_ts):
             r.hset(sess_data['id'], mapping=fields)
         return False
     else:
-        logger.debug(f'db_update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity*3.6:.1f}')
+        logger.debug(f'db_update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}')
 
         fields = {}
         fields['last_lat'] = loc.latitude
