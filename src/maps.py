@@ -86,7 +86,7 @@ async def try_create_map():
 
     ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
 
-    detail_lvl = const.MAP_LO_DETAIL_LVL if max(lat_delta, lon_delta) < const.MAP_ANGULAR_SIZE_THRESHOLD else const.MAP_HI_DETAIL_LVL
+    detail_lvl = const.MAP_HI_DETAIL_LVL if max(lat_delta, lon_delta) < const.MAP_ANGULAR_SIZE_THRESHOLD else const.MAP_LO_DETAIL_LVL
     ax.add_image(tiler, detail_lvl)
 
     for points in segments:

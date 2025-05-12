@@ -8,4 +8,4 @@ MIN_POINTS_FOR_MAP = 10 # Minimal points num to generate a map
 MIN_ANGULAR_SIZE_FOR_MAP = 0.003 # Minimal angular size of track to have a map
 MAP_ANGULAR_SIZE_THRESHOLD = 0.008 # Threshold of hi/lo map detail
 MAP_LO_DETAIL_LVL = 14
-MAP_HI_DETAIL_LVL = 16
+MAP_HI_DETAIL_LVL = 18
