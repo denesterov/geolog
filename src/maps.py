@@ -55,6 +55,10 @@ async def convert_map():
         ax.plot(lons, lats, color='blue', linewidth=2, transform=ccrs.Geodetic())
 
     logger.info(f'convert_map. saving image. sess_id={sess_id}')
-    plt.savefig('map.jpg', dpi=300, format='jpg')
-
+    sess_id_split = sess_id.split(':')
+    assert len(sess_id_split) == 2
+    assert sess_id_split[0] == 'session'
+    fname = f'map_{sess_id_split[1]}.jpg' 
+    plt.savefig(fname, dpi=300, format='jpg')
+    logger.info(f'convert_map. saved. sess_id={sess_id}, filename={fname}')
     db.finish_maps_job(sess_id)
