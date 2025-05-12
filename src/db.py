@@ -229,3 +229,16 @@ def get_track(sess_id: str):
 
     info = TrackInfo(float(sess_data['length']), float(sess_data['duration']), float(sess_data['ts']), len(raw_points))
     return info, segments
+
+
+def acquire_maps_job():
+    logger.info(f'get_maps_jobs.')
+
+    r = get_redis()
+    sess_id = r.srandmember('maps:todo')
+    if sess_id is None:
+        return None
+    logger.info(f'get_maps_jobs. new job. sess_id={sess_id}')
+    r.sadd('maps:inprog', sess_id)
+    r.srem('maps:inprog', sess_id)
+    return sess_id

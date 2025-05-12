@@ -10,6 +10,7 @@ import const
 import gpx
 
 import db
+import maps
 
 logger = logging.getLogger('geobot-main')
 
@@ -216,6 +217,10 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
         await query.edit_message_text(text='Wrong menu button')
 
 
+async def maps_generation_job(context: telegram.ext.CallbackContext):
+    maps.convert_map()
+
+
 def mainloop():
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -238,6 +243,8 @@ def mainloop():
     application.add_handler(telegram.ext.CommandHandler('debug_ping', cmd_debug_ping))
     application.add_handler(telegram.ext.CallbackQueryHandler(cmd_button))
     application.add_handler(telegram.ext.MessageHandler(telegram.ext.filters.LOCATION & (~telegram.ext.filters.COMMAND), cmd_message))
+
+    application.job_queue.run_repeating(maps_generation_job, 10.0)
 
     application.run_polling()
 
