@@ -256,3 +256,8 @@ def finish_map_job(sess_id: str):
     r = get_redis()
     r.sadd('maps:ready', sess_id)
     r.srem('maps:inprog', sess_id)
+
+
+def is_map_available(sess_id: str):
+    r = get_redis()
+    return r.smismember('maps:ready', sess_id)[0] > 0
