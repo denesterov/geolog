@@ -180,6 +180,16 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
     return (f'Records from {offset} to {min(offset + page, sess_total)} of {sess_total}', telegram.InlineKeyboardMarkup(keyboard))
 
 
+async def cmd_start(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
+    usr_id = update.effective_user.id
+    if context.args is not None:
+        logger.info(f'cmd_start/deeplink. usr_id={usr_id}, args={context.args}')
+        await update.message.reply_text(f'DL START: {context.args[0]}')
+    else:
+        logger.info(f'cmd_start. usr_id={usr_id}, msg={update.message}')
+        await update.message.reply_text(f'GENERAL START')
+
+
 async def cmd_tracks(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
     logger.info(f'cmd_tracks. usr_id={usr_id}')
@@ -252,6 +262,7 @@ def mainloop():
 
     application = telegram.ext.ApplicationBuilder().token(BOT_TOKEN).build()
 
+    application.add_handler(telegram.ext.CommandHandler('start', cmd_start))
     application.add_handler(telegram.ext.CommandHandler('tracks', cmd_tracks))
     application.add_handler(telegram.ext.CommandHandler('debug_tracks', cmd_debug_tracks))
     application.add_handler(telegram.ext.CommandHandler('debug_ping', cmd_debug_ping))
