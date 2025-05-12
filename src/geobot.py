@@ -10,6 +10,7 @@ import const
 import gpx
 
 import db
+import maps
 
 logger = logging.getLogger('geobot-main')
 
@@ -40,6 +41,7 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         if (new_location):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
         elif msg.location.live_period is None:
+            db.add_map_job(sess_data['id'])
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
 
 
@@ -125,7 +127,7 @@ def create_gpx_data(segments):
     return gpx_inst.to_string()
 
 
-def sessions_menu_item(sess_id: str):
+async def sessions_menu_item(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     logger.info(f'sessions_menu_item. sess_id={sess_id}')
 
     info, segments = db.get_track(sess_id)
@@ -136,12 +138,20 @@ def sessions_menu_item(sess_id: str):
     sess_dur = info.duration
 
     ts_str = time.asctime(time.gmtime(info.timestamp))
-    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {info.points_total} points'
+    descr = f'Here is your track\nStart time {ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {info.points_total} points'
+    
+    get_map_res = maps.get_map(sess_id)
+    if get_map_res is not None:
+        map_file_data, map_filename = get_map_res
+        map_file = telegram.InputFile(map_file_data, map_filename)
+        await context.bot.send_photo(update.effective_chat.id, map_file, caption=descr)
 
     sess_tm = datetime.datetime.fromtimestamp(info.timestamp)
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
+    gpx_file = telegram.InputFile(gpx_data, file_name)
+    await context.bot.send_document(update.effective_chat.id, gpx_file)
 
-    return (descr, telegram.InputFile(gpx_data, file_name))
+    return ''
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
@@ -202,9 +212,8 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
 
     data = query.data.split(' ')
     if data[0] == 'session_menu_item':
-        descr, gpx_file = sessions_menu_item(data[1])
+        descr = await sessions_menu_item(data[1], update, context)
         await query.edit_message_text(text=descr)
-        await context.bot.send_document(update.effective_chat.id, gpx_file)
     elif data[0] == 'session_menu':
         usr_id = update.effective_user.id
         logger.info(f'cmd_button. session_menu. usr_id={usr_id}')
@@ -214,6 +223,10 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
         await context.bot.deleteMessage(message_id = update.effective_message.id, chat_id=update.effective_chat.id)
     else:
         await query.edit_message_text(text='Wrong menu button')
+
+
+async def maps_generation_job(context: telegram.ext.CallbackContext):
+    await maps.try_create_map()
 
 
 def mainloop():
@@ -238,6 +251,8 @@ def mainloop():
     application.add_handler(telegram.ext.CommandHandler('debug_ping', cmd_debug_ping))
     application.add_handler(telegram.ext.CallbackQueryHandler(cmd_button))
     application.add_handler(telegram.ext.MessageHandler(telegram.ext.filters.LOCATION & (~telegram.ext.filters.COMMAND), cmd_message))
+
+    application.job_queue.run_repeating(maps_generation_job, 10.0)
 
     application.run_polling()
 

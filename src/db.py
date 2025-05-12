@@ -229,3 +229,35 @@ def get_track(sess_id: str):
 
     info = TrackInfo(float(sess_data['length']), float(sess_data['duration']), float(sess_data['ts']), len(raw_points))
     return info, segments
+
+
+def add_map_job(sess_id):
+    logger.info(f'add_map_job. sess_id={sess_id}')
+    r = get_redis()
+    r.sadd('maps:todo', sess_id)
+
+
+def acquire_map_job():
+    logger.info(f'acquire_map_job.')
+
+    r = get_redis()
+    sess_id = r.srandmember('maps:todo')
+    if sess_id is None:
+        return None
+    logger.info(f'acquire_map_job. new job. sess_id={sess_id}')
+    r.sadd('maps:inprog', sess_id)
+    r.srem('maps:todo', sess_id)
+    return sess_id
+
+
+def finish_map_job(sess_id: str):
+    logger.info(f'finish_map_job. sess_id={sess_id}')
+
+    r = get_redis()
+    r.sadd('maps:ready', sess_id)
+    r.srem('maps:inprog', sess_id)
+
+
+def is_map_available(sess_id: str):
+    r = get_redis()
+    return r.smismember('maps:ready', sess_id)[0] > 0
