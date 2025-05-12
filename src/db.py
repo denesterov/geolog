@@ -240,7 +240,7 @@ def acquire_maps_job():
         return None
     logger.info(f'get_maps_jobs. new job. sess_id={sess_id}')
     r.sadd('maps:inprog', sess_id)
-    r.srem('maps:inprog', sess_id)
+    r.srem('maps:todo', sess_id)
     return sess_id
 
 
