@@ -53,10 +53,14 @@ async def try_create_map():
 
     lat_delta = lat_max - lat_min
     lon_delta = lon_max - lon_min
-    lowest_ang_delta = min(lat_delta, lon_delta)
-    # if lowest_ang_delta < const.MIN_ANGULAR_SIZE_FOR_MAP:
-    #    db.finish_map_job(sess_id)
-    #    return
+    if lat_delta < const.MIN_ANGULAR_SIZE_FOR_MAP:
+        mid = 0.5 * (lat_max + lat_min)
+        lat_min = mid - 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+        lat_max = mid + 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+    if lon_delta < const.MIN_ANGULAR_SIZE_FOR_MAP:
+        mid = 0.5 * (lon_max + lon_min)
+        lon_min = mid - 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+        lon_max = mid + 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
 
     aspect = 1.0
     aspect = lon_delta / lat_delta
@@ -82,7 +86,7 @@ async def try_create_map():
 
     ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
 
-    detail_lvl = const.MAP_LO_DETAIL_LVL if lowest_ang_delta < const.MAP_ANGULAR_SIZE_THRESHOLD else const.MAP_HI_DETAIL_LVL
+    detail_lvl = const.MAP_LO_DETAIL_LVL if max(lat_delta, lon_delta) < const.MAP_ANGULAR_SIZE_THRESHOLD else const.MAP_HI_DETAIL_LVL
     ax.add_image(tiler, detail_lvl)
 
     for points in segments:
