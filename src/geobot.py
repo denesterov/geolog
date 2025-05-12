@@ -218,7 +218,7 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
 
 
 async def maps_generation_job(context: telegram.ext.CallbackContext):
-    maps.convert_map()
+    await maps.convert_map()
 
 
 def mainloop():

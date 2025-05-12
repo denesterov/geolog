@@ -242,3 +242,11 @@ def acquire_maps_job():
     r.sadd('maps:inprog', sess_id)
     r.srem('maps:inprog', sess_id)
     return sess_id
+
+
+def finish_maps_job(sess_id: str):
+    logger.info(f'finish_maps_job. sess_id={sess_id}')
+
+    r = get_redis()
+    r.sadd('maps:ready', sess_id)
+    r.srem('maps:inprog', sess_id)
