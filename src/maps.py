@@ -28,9 +28,9 @@ async def try_create_map():
     
     logger.info(f'try_create_map. Creating map for track. sess_id={sess_id}')
     track_info, segments = db.get_track(sess_id)
-    # if track_info.points_total < const.MIN_POINTS_FOR_MAP:
-    #     db.finish_map_job(sess_id)
-    #     return
+    if track_info.points_total < const.MIN_POINTS_FOR_MAP:
+        db.finish_map_job(sess_id)
+        return
 
     base_path = os.environ.get('MAP_IMAGES_DIR', const.DEFAULT_BASE_DIR)
     os.makedirs(base_path, exist_ok=True)
@@ -86,7 +86,12 @@ async def try_create_map():
 
     ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
 
-    detail_lvl = const.MAP_HI_DETAIL_LVL if max(lat_delta, lon_delta) < const.MAP_ANGULAR_SIZE_THRESHOLD else const.MAP_LO_DETAIL_LVL
+    max_ang_size = max(lat_delta, lon_delta)
+    detail_lvl = const.MAP_DETAIL_LVL3
+    if max_ang_size < const.MAP_ANGULAR_SIZE_THRESHOLD1:
+        detail_lvl = const.MAP_DETAIL_LVL1
+    elif max_ang_size < const.MAP_ANGULAR_SIZE_THRESHOLD2:
+        detail_lvl = const.MAP_DETAIL_LVL2
     ax.add_image(tiler, detail_lvl)
 
     for points in segments:
