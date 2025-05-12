@@ -9,7 +9,7 @@ logger = logging.getLogger('geobot-maps')
 
 async def convert_map():
     logger.info(f'convert_map.')
-    sess_id = db.acquire_maps_job()
+    sess_id = db.acquire_map_job()
     if sess_id is None:
         return
     
@@ -61,4 +61,4 @@ async def convert_map():
     fname = f'map_{sess_id_split[1]}.jpg' 
     plt.savefig(fname, dpi=300, format='jpg')
     logger.info(f'convert_map. saved. sess_id={sess_id}, filename={fname}')
-    db.finish_maps_job(sess_id)
+    db.finish_map_job(sess_id)

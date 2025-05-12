@@ -231,21 +231,27 @@ def get_track(sess_id: str):
     return info, segments
 
 
-def acquire_maps_job():
-    logger.info(f'get_maps_jobs.')
+def add_map_job(sess_id):
+    logger.info(f'add_map_job. sess_id={sess_id}')
+    r = get_redis()
+    r.sadd('maps:todo', sess_id)
+
+
+def acquire_map_job():
+    logger.info(f'acquire_map_job.')
 
     r = get_redis()
     sess_id = r.srandmember('maps:todo')
     if sess_id is None:
         return None
-    logger.info(f'get_maps_jobs. new job. sess_id={sess_id}')
+    logger.info(f'acquire_map_job. new job. sess_id={sess_id}')
     r.sadd('maps:inprog', sess_id)
     r.srem('maps:todo', sess_id)
     return sess_id
 
 
-def finish_maps_job(sess_id: str):
-    logger.info(f'finish_maps_job. sess_id={sess_id}')
+def finish_map_job(sess_id: str):
+    logger.info(f'finish_map_job. sess_id={sess_id}')
 
     r = get_redis()
     r.sadd('maps:ready', sess_id)

@@ -41,6 +41,7 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         if (new_location):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
         elif msg.location.live_period is None:
+            db.add_map_job(sess_data['id'])
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
 
 
