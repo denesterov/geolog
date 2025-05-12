@@ -5,6 +5,8 @@ import time
 import datetime
 import telegram
 import telegram.ext
+from geopy import distance
+import const
 import gpx
 
 import db
@@ -31,7 +33,7 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         dt = msg.edit_date if msg.edit_date is not None else msg.date
         common_ts = dt.timestamp() if dt else time.time()
         sess_data = db.get_or_create_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
-        if new_location or db.update_session(sess_data, msg.location, common_ts):
+        if new_location or update_session(sess_data, msg.location, common_ts):
             db.store_location(sess_data, msg.from_user.id, msg.location, common_ts)
 
         usr_name = update.effective_user.first_name if update.effective_user else 'User'
@@ -39,6 +41,55 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
         elif msg.location.live_period is None:
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
+
+
+def update_session(sess_data, loc, common_ts):
+    sess_id = sess_data['id']
+    last_lat = float(sess_data['last_lat'])
+    last_long = float(sess_data['last_long'])
+    time_period = common_ts - float(sess_data['last_update'])
+    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
+    velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
+
+    def finish_segment(sess_data):
+        if int(sess_data['track_segm_len']) == 0:
+            return None
+        segm_id = int(sess_data['track_segm_idx'])
+        logger.info(f'update_session. finishing segment. sess_id={sess_id}, segm_id={segm_id}')
+        return {
+            'track_segm_idx' : segm_id + 1,
+            'track_segm_len' : 0,
+            'last_update' : common_ts,
+        }
+
+    fields = None
+    result = None
+    if delta < const.MIN_GEO_DELTA:
+        logger.info(f'update_session. skip coord update by idle. sess_id={sess_id}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
+        if time_period > const.AFTER_PAUSE_TIME:
+            fields = finish_segment(sess_data)
+            pass
+        result = False
+    elif velocity > const.MAX_SPEED:
+        logger.info(f'update_session. skip coord update by overspeed. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
+        fields = finish_segment(sess_data)
+        result = False
+    else:
+        logger.info(f'update_session. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
+        fields = {
+            'last_lat' : loc.latitude,
+            'last_long' : loc.longitude,
+            'length' : float(sess_data['length']) + delta,
+            'duration' : float(sess_data['duration']) + (common_ts - float(sess_data['last_update'])),
+            'last_update' : common_ts,
+            'track_segm_len' : int(sess_data['track_segm_len']) + 1,
+        }
+        result = True
+
+    if fields is not None:
+        fields['last_update'] = common_ts
+        db.update_session(sess_id, fields)
+    return result
 
 
 def duration_to_human(dur: float):
@@ -54,21 +105,21 @@ def duration_to_human(dur: float):
     return result
 
 
-def create_gpx_data(points):
+def create_gpx_data(segments):
     gpx_inst = gpx.GPX()
     gpx_inst.name = 'Telegram GPS track'
     gpx_inst.creator='Geograph'
     gpx_inst.descr = 'This GPX file was created by Geograph Telegram Bot'
     gpx_inst.tracks.append(gpx.track.Track())
 
-    for segm_points in points:
+    for segm_points in segments:
         gpx_inst.tracks[0].segments.append(gpx.track_segment.TrackSegment())
         segment = gpx_inst.tracks[0].segments[-1]
-        for (lat, long, ts) in segm_points:
+        for pnt in segm_points:
             wp = gpx.Waypoint()
-            wp.lat = lat
-            wp.lon = long
-            wp.time = datetime.datetime.fromtimestamp(ts)
+            wp.lat = pnt.lat
+            wp.lon = pnt.lon
+            wp.time = datetime.datetime.fromtimestamp(pnt.timestamp)
             segment.append(wp)
     
     return gpx_inst.to_string()
@@ -77,17 +128,17 @@ def create_gpx_data(points):
 def sessions_menu_item(sess_id: str):
     logger.info(f'sessions_menu_item. sess_id={sess_id}')
 
-    info, points, total_points = db.get_track(sess_id)
+    info, segments = db.get_track(sess_id)
 
-    gpx_data = create_gpx_data(points)
+    gpx_data = create_gpx_data(segments)
 
-    sess_len = info['length'] / 1000.0
-    sess_dur = info['duration']
+    sess_len = info.length / 1000.0
+    sess_dur = info.duration
 
-    ts_str = time.asctime(time.gmtime(info['timestamp']))
-    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {total_points} points'
+    ts_str = time.asctime(time.gmtime(info.timestamp))
+    descr = f'Here is your GPX file\n{ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {info.points_total} points'
 
-    sess_tm = datetime.datetime.fromtimestamp(info['timestamp'])
+    sess_tm = datetime.datetime.fromtimestamp(info.timestamp)
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
 
     return (descr, telegram.InputFile(gpx_data, file_name))
@@ -101,7 +152,7 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
     keyboard = []
     for sess in sessions:
         length = sess.length / 1000.0
-        age = time.time() - sess.ts
+        age = time.time() - sess.timestamp
         descr = f'{duration_to_human(age)} ago, {length:.1f} km'
         keyboard.append([telegram.InlineKeyboardButton(descr, callback_data=f'session_menu_item {sess.id}')])
 
@@ -132,11 +183,11 @@ async def cmd_debug_ping(update: telegram.Update, context: telegram.ext.ContextT
 async def cmd_debug_tracks(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
     logger.info(f'cmd_debug_tracks. usr_id={usr_id}')
-    sessions, _ = db.get_sessions(usr_id, 0, 10, True)
+    sessions, sess_total = db.get_sessions(usr_id, 0, 10, True)
 
-    lines = [f'Hello {update.effective_user.first_name} here is your tracks:\n\n']
+    lines = [f'Hello {update.effective_user.first_name} here is your last tracks:\n(You have {sess_total} total tracks)\n\n']
     for sess in sessions:
-        tm = time.asctime(time.gmtime(sess.ts))
+        tm = time.asctime(time.gmtime(sess.timestamp))
         lines.append(f'Track: {sess.id}\n{tm}\nChat: {sess.chat_name}\nLength {sess.length} m, duration {sess.duration} s, {sess.points_num} points\n\n')
     
     await context.bot.send_message(chat_id=update.effective_chat.id, text=''.join(lines))

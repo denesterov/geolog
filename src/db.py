@@ -5,12 +5,12 @@ from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 import uuid
-from geopy import distance
 from collections import namedtuple
 
-import const
 
-DebugSession = namedtuple('DebugSession', ['id', 'ts', 'chat_name', 'points_num', 'length', 'duration'])
+Session = namedtuple('Session', ['id', 'timestamp', 'chat_name', 'points_num', 'length', 'duration'])
+TrackPoint = namedtuple('TrackPoint', ['lat', 'lon', 'timestamp'])
+TrackInfo = namedtuple('TrackInfo', ['length', 'duration', 'timestamp', 'points_total'])
 
 logger = logging.getLogger('geobot-db')
 
@@ -132,54 +132,9 @@ def get_or_create_session(usr_id, msg_id, tg_chat, loc, common_ts):
         return doc
 
 
-# fixme split logic and db io
-def update_session(sess_data, loc, common_ts):
-    last_lat = float(sess_data['last_lat'])
-    last_long = float(sess_data['last_long'])
-    time_period = common_ts - float(sess_data['last_update'])
-    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-    velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
-
-    def finish_segment(sess_data):
-        if int(sess_data['track_segm_len']) == 0:
-            return None
-        segm_id = int(sess_data['track_segm_idx'])
-        logger.info(f'update_session. finishing segment. sess_id={sess_data["id"]}, segm_id={segm_id}')
-        return {
-            'track_segm_idx' : segm_id + 1,
-            'track_segm_len' : 0,
-            'last_update' : common_ts,
-        }
-
-    fields = None
-    result = None
-    if delta < const.MIN_GEO_DELTA:
-        logger.info(f'update_session. skip coord update by idle. sess_id={sess_data["id"]}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
-        if time_period > const.AFTER_PAUSE_TIME:
-            fields = finish_segment(sess_data)
-            pass
-        result = False
-    elif velocity > const.MAX_SPEED:
-        logger.info(f'update_session. skip coord update by overspeed. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-        fields = finish_segment(sess_data)
-        result = False
-    else:
-        logger.info(f'update_session. writing update. sess_id={sess_data["id"]}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-        fields = {
-            'last_lat' : loc.latitude,
-            'last_long' : loc.longitude,
-            'length' : float(sess_data['length']) + delta,
-            'duration' : float(sess_data['duration']) + (common_ts - float(sess_data['last_update'])),
-            'last_update' : common_ts,
-            'track_segm_len' : int(sess_data['track_segm_len']) + 1,
-        }
-        result = True
-
-    if fields is not None:
-        r = get_redis()
-        fields['last_update'] = common_ts
-        r.hset(sess_data['id'], mapping=fields)
-    return result
+def update_session(sess_id, fields):
+    r = get_redis()
+    r.hset(sess_id, mapping=fields)
 
 
 def store_location(sess_data, usr_id, loc, common_ts):
@@ -219,11 +174,11 @@ def get_sessions(usr_id: int, offset: int, page_size: int, count_points: bool):
         sess_id = doc.id
         total_points = 0
         if count_points:
-            q = Query(f'@sess_id:{escape_for_exact_search(sess_id)}').dialect(2)
+            q = Query(f'@sess_id:{escape_for_exact_search(sess_id)}').dialect(2).paging(0, 0)
             pnt_res = point_idx.search(q)
-            logger.debug(f'get_sessions. points={pnt_res.total}')
             total_points = pnt_res.total
-        sessions.append(DebugSession(
+            logger.debug(f'get_sessions. total_points={total_points}')
+        sessions.append(Session(
             sess_id,
             float(doc.ts),
             doc.chat_name,
@@ -249,9 +204,7 @@ def get_track(sess_id: str):
         pnt_res = point_idx.search(q)
         logger.info(f'get_track. points={len(pnt_res.docs)}, total={pnt_res.total}')
         raw_points += \
-            [(float(pnt.latitude),
-              float(pnt.longitude),
-              round(float(pnt.ts), 1),
+            [(float(pnt.latitude), float(pnt.longitude), round(float(pnt.ts), 1),
               pnt.segm_id if hasattr(pnt, 'segm_id') else 1)
                 for pnt in pnt_res.docs]
         offset += page_size
@@ -268,15 +221,11 @@ def get_track(sess_id: str):
         else:
             points = []
             by_segm_id[segm_id] = points
-        points.append((lat, lon, ts))
+        points.append(TrackPoint(lat, lon, ts))
     
-    points = []
+    segments = []
     for segm_id in sorted(by_segm_id.keys()):
-        points.append(by_segm_id[segm_id])
+        segments.append(by_segm_id[segm_id])
 
-    info = {
-        'length' : float(sess_data['length']),
-        'duration' : float(sess_data['duration']),
-        'timestamp' : float(sess_data['ts']),
-    }
-    return info, points, len(raw_points)
+    info = TrackInfo(float(sess_data['length']), float(sess_data['duration']), float(sess_data['ts']), len(raw_points))
+    return info, segments
