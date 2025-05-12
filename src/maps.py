@@ -27,7 +27,10 @@ async def try_create_map():
         return
     
     logger.info(f'try_create_map. Creating map for track. sess_id={sess_id}')
-    _, segments = db.get_track(sess_id)
+    track_info, segments = db.get_track(sess_id)
+    if track_info.points_total < const.MIN_POINTS_FOR_MAP:
+        db.finish_map_job(sess_id)
+        return
 
     base_path = os.environ.get('MAP_IMAGES_DIR', const.DEFAULT_BASE_DIR)
     os.makedirs(base_path, exist_ok=True)
@@ -50,12 +53,19 @@ async def try_create_map():
 
     lat_delta = lat_max - lat_min
     lon_delta = lon_max - lon_min
-    MIN_ANG_SIZE = 0.002 # it is approx 200 meters in europe
+    if lat_delta < const.MIN_ANGULAR_SIZE_FOR_MAP:
+        mid = 0.5 * (lat_max + lat_min)
+        lat_min = mid - 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+        lat_max = mid + 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+    if lon_delta < const.MIN_ANGULAR_SIZE_FOR_MAP:
+        mid = 0.5 * (lon_max + lon_min)
+        lon_min = mid - 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+        lon_max = mid + 0.5 * const.MIN_ANGULAR_SIZE_FOR_MAP
+
     aspect = 1.0
-    if lat_delta > MIN_ANG_SIZE and lon_delta > MIN_ANG_SIZE:
-        aspect = lon_delta / lat_delta
-        aspect = max(aspect, 0.33)
-        aspect = min(aspect, 3.0)
+    aspect = lon_delta / lat_delta
+    aspect = max(aspect, 0.33)
+    aspect = min(aspect, 3.0)
 
     BASE_FIG_SIZE = 10.0
     fig_size = None
@@ -76,7 +86,13 @@ async def try_create_map():
 
     ax.set_extent([lon_min, lon_max, lat_min, lat_max], crs=ccrs.PlateCarree())
 
-    ax.add_image(tiler, 14)  # число 14 — уровень масштабирования (чем больше, тем детальнее)
+    max_ang_size = max(lat_delta, lon_delta)
+    detail_lvl = const.MAP_DETAIL_LVL3
+    if max_ang_size < const.MAP_ANGULAR_SIZE_THRESHOLD1:
+        detail_lvl = const.MAP_DETAIL_LVL1
+    elif max_ang_size < const.MAP_ANGULAR_SIZE_THRESHOLD2:
+        detail_lvl = const.MAP_DETAIL_LVL2
+    ax.add_image(tiler, detail_lvl)
 
     for points in segments:
         lons = []
@@ -90,6 +106,7 @@ async def try_create_map():
     fname = get_filename(sess_id) 
     plt.savefig(fname, dpi=300, format='jpg', bbox_inches='tight', pad_inches=0)
     logger.info(f'try_create_map. saved. sess_id={sess_id}, filename={fname}')
+
     db.finish_map_job(sess_id)
 
 

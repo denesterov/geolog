@@ -151,7 +151,7 @@ async def sessions_menu_item(sess_id: str, update: telegram.Update, context: tel
     gpx_file = telegram.InputFile(gpx_data, file_name)
     await context.bot.send_document(update.effective_chat.id, gpx_file)
 
-    return ''
+    return descr if get_map_res is None else ''
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
