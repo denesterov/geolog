@@ -164,7 +164,8 @@ def parse_deep_link(args):
         b64 = base64.b64decode(args[0])
         if len(b64) == 16:
             try:
-                return uuid.UUID(b64)
+                sess_uuid = uuid.UUID(bytes = b64)
+                return 'session:' + str(sess_uuid)
             except ValueError:
                 pass
     return None
