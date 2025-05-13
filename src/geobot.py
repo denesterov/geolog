@@ -8,6 +8,8 @@ import telegram.ext
 from geopy import distance
 import const
 import gpx
+import base64
+import uuid
 
 import db
 import maps
@@ -130,8 +132,8 @@ def create_gpx_data(segments):
     return gpx_inst.to_string()
 
 
-async def sessions_menu_item(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
-    logger.info(f'sessions_menu_item. sess_id={sess_id}')
+async def output_track_to_chat(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
+    logger.info(f'output_track_to_chat. sess_id={sess_id}')
 
     info, segments = db.get_track(sess_id)
 
@@ -141,20 +143,36 @@ async def sessions_menu_item(sess_id: str, update: telegram.Update, context: tel
     sess_dur = info.duration
 
     ts_str = time.asctime(time.gmtime(info.timestamp))
-    descr = f'Here is your track\nStart time {ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}, {info.points_total} points'
+    descr = f'Here is the track\nStart time {ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}'
     
     get_map_res = maps.get_map(sess_id)
     if get_map_res is not None:
         map_file_data, map_filename = get_map_res
         map_file = telegram.InputFile(map_file_data, map_filename)
         await context.bot.send_photo(update.effective_chat.id, map_file, caption=descr)
+    else:
+        await context.bot.send_message(chat_id = update.effective_chat.id, text=descr)
 
     sess_tm = datetime.datetime.fromtimestamp(info.timestamp)
     file_name = f'TelegramTrack_{sess_tm.year}{sess_tm.month:02}{sess_tm.day:02}_{sess_tm.hour:02}{sess_tm.minute:02}.gpx'
     gpx_file = telegram.InputFile(gpx_data, file_name)
     await context.bot.send_document(update.effective_chat.id, gpx_file)
 
-    return descr if get_map_res is None else None
+
+def parse_deep_link(args):
+    if (len(args) == 1 and type(args[0]) == 'str'):
+        b64 = base64.b64decode(args[0])
+        if len(b64) == 16:
+            try:
+                return uuid.UUID(b64)
+            except ValueError:
+                pass
+    return None
+
+
+async def sessions_menu_item(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
+    logger.info(f'sessions_menu_item. sess_id={sess_id}')
+    output_track_to_chat(sess_id, update, context)
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
@@ -183,10 +201,16 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
 async def cmd_start(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
     if context.args is not None:
-        logger.info(f'cmd_start/deeplink. usr_id={usr_id}, args={context.args}')
-        await update.message.reply_text(f'DL START: {context.args[0]}')
+        logger.info(f'cmd_start. deeplink. usr_id={usr_id}, args={context.args}')
+        await context.bot.deleteMessage(message_id=update.effective_message.id, chat_id=update.effective_chat.id)
+        sess_id = parse_deep_link(context.args)
+        if sess_id is not None:
+            await update.message.reply_text(f'Shared track: {sess_id}')
+            output_track_to_chat(sess_id, update, context)
+        else:
+            await update.message.reply_text(f'Wrong deep link.')
     else:
-        logger.info(f'cmd_start. usr_id={usr_id}, msg={update.message}')
+        logger.info(f'cmd_start. general start. usr_id={usr_id}, msg={update.message}')
         await update.message.reply_text(f'GENERAL START')
 
 
@@ -225,18 +249,15 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
 
     data = query.data.split(' ')
     if data[0] == 'session_menu_item':
-        descr = await sessions_menu_item(data[1], update, context)
-        if descr is None:
-            await context.bot.deleteMessage(message_id = update.effective_message.id, chat_id=update.effective_chat.id)
-        else:
-            await query.edit_message_text(text=descr)
+        await context.bot.deleteMessage(message_id=update.effective_message.id, chat_id=update.effective_chat.id)
+        await sessions_menu_item(data[1], update, context)
     elif data[0] == 'session_menu':
         usr_id = update.effective_user.id
         logger.info(f'cmd_button. session_menu. usr_id={usr_id}')
         menu_text, menu = sessions_menu_create(usr_id, int(data[1]), int(data[2]))
         await query.edit_message_text(text=menu_text, reply_markup=menu)
     elif data[0] == 'session_cancel':
-        await context.bot.deleteMessage(message_id = update.effective_message.id, chat_id=update.effective_chat.id)
+        await context.bot.deleteMessage(message_id=update.effective_message.id, chat_id=update.effective_chat.id)
     else:
         await query.edit_message_text(text='Wrong menu button')
 
