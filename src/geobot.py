@@ -151,7 +151,7 @@ async def sessions_menu_item(sess_id: str, update: telegram.Update, context: tel
     gpx_file = telegram.InputFile(gpx_data, file_name)
     await context.bot.send_document(update.effective_chat.id, gpx_file)
 
-    return descr if get_map_res is None else ''
+    return descr if get_map_res is None else None
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
@@ -213,7 +213,10 @@ async def cmd_button(update: telegram.Update, context: telegram.ext.ContextTypes
     data = query.data.split(' ')
     if data[0] == 'session_menu_item':
         descr = await sessions_menu_item(data[1], update, context)
-        await query.edit_message_text(text=descr)
+        if descr is None:
+            await context.bot.deleteMessage(message_id = update.effective_message.id, chat_id=update.effective_chat.id)
+        else:
+            await query.edit_message_text(text=descr)
     elif data[0] == 'session_menu':
         usr_id = update.effective_user.id
         logger.info(f'cmd_button. session_menu. usr_id={usr_id}')
