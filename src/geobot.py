@@ -157,10 +157,15 @@ async def output_track_to_chat(sess_id: str, update: telegram.Update, context: t
 
 
 def parse_deep_link(args):
+    logger.info(f'parse_deep_link. args={args}')
     if (len(args) == 1 and type(args[0]) == 'str'):
+        logger.info(f'parse_deep_link. args0={args[0]}')
         b64 = base64.b64decode(args[0])
+
+        logger.info(f'parse_deep_link. b64={b64}, b64len={len(b64)}')
         if len(b64) == 16:
             try:
+                logger.info(f'parse_deep_link. UUID')
                 sess_uuid = uuid.UUID(bytes = b64)
                 return 'session:' + str(sess_uuid)
             except ValueError:
