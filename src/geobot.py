@@ -24,13 +24,13 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         new_location = False
     elif update.message is not None and update.message.location is not None:
         if update.message.location.live_period is None:
-            logger.info(f'Static location received. Ignoring. chat_id={update.message.chat.id}, msg_id={update.message.message_id}, usr_id={update.message.from_user.id}')
+            logger.info(f'cmd_message. Static location received. Ignoring. chat_id={update.message.chat.id}, msg_id={update.message.message_id}, usr_id={update.message.from_user.id}')
         else:
             msg = update.message
             new_location = True
 
     if msg is not None:
-        logger.info(f'Location: new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
+        logger.info(f'cmd_message. Location. new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
         dt = msg.edit_date if msg.edit_date is not None else msg.date
         common_ts = dt.timestamp() if dt else time.time()
         sess_data = db.get_or_create_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
@@ -41,20 +41,27 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
         if (new_location):
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
         elif msg.location.live_period is None:
+            logger.info(f'cmd_message. Translation stopped. chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}')
             db.add_map_job(sess_data['id'])
             await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
 
 
 def update_session(sess_data, loc, common_ts):
     sess_id = sess_data['id']
-    last_lat = float(sess_data['last_lat'])
-    last_long = float(sess_data['last_long'])
-    time_period = common_ts - float(sess_data['last_update'])
-    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-    velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
+
+    time_period = 0.0
+    delta = 0.0
+    velocity = 0.0
+    track_segm_len = int(sess_data['track_segm_len'])
+    if track_segm_len > 0:
+        last_lat = float(sess_data['last_lat'])
+        last_long = float(sess_data['last_long'])
+        time_period = common_ts - float(sess_data['last_update'])
+        delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
+        velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
 
     def finish_segment(sess_data):
-        if int(sess_data['track_segm_len']) == 0:
+        if track_segm_len == 0:
             return None
         segm_id = int(sess_data['track_segm_idx'])
         logger.info(f'update_session. finishing segment. sess_id={sess_id}, segm_id={segm_id}')
@@ -82,9 +89,9 @@ def update_session(sess_data, loc, common_ts):
             'last_lat' : loc.latitude,
             'last_long' : loc.longitude,
             'length' : float(sess_data['length']) + delta,
-            'duration' : float(sess_data['duration']) + (common_ts - float(sess_data['last_update'])),
+            'duration' : float(sess_data['duration']) + time_period,
             'last_update' : common_ts,
-            'track_segm_len' : int(sess_data['track_segm_len']) + 1,
+            'track_segm_len' : track_segm_len + 1,
         }
         result = True
 
