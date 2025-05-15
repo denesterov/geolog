@@ -3,7 +3,7 @@
 venv:
 	python3 -m venv venv
 
-.PHONY: setup run cleanup
+.PHONY: setup run cleanup test test-docker
 
 setup: venv
 	. venv/bin/activate; pip install -r requirements.txt
@@ -18,3 +18,10 @@ run: venv
 
 run_env_token: venv
 	. venv/bin/activate; python3 geobot.py
+
+test: venv
+	. venv/bin/activate; pip install -r ../test/requirements-test.txt; \
+	PYTHONPATH=. pytest -v -c ../test/pytest.ini
+
+test-docker:
+	cd ../test/docker && docker-compose up --build --abort-on-container-exit
