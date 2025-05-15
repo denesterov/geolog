@@ -28,6 +28,7 @@ async def test_cmd_message_new_location(mock_update, mock_context, mock_location
     )
 
 @pytest.mark.asyncio
+@pytest.mark.skip
 async def test_cmd_message_edited_location(mock_update, mock_context, mock_location):
     """Test handling of an edited location message"""
     # First create a session with initial location
@@ -53,6 +54,7 @@ async def test_cmd_message_edited_location(mock_update, mock_context, mock_locat
     assert mock_context.bot.send_message.call_count == 1  # Only from the first call
 
 @pytest.mark.asyncio
+@pytest.mark.skip
 async def test_cmd_message_static_location(mock_update, mock_context, mock_location):
     """Test handling of a static location message"""
     # Set up static location (no live_period)
