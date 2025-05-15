@@ -9,9 +9,10 @@ WORKDIR /app
 
 COPY src/ /app/src/
 COPY test/ /app/test/
-COPY Makefile /app/
 
+WORKDIR /app/src
 RUN make setup
 RUN pip install -r /app/test/requirements-test.txt
 
+WORKDIR /app
 CMD ["pytest", "-v", "-c", "/app/test/pytest.ini"] 
