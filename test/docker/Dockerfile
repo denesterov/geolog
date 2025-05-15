@@ -5,11 +5,6 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y git make pip && apt-get clean
 
-WORKDIR /app
-
-COPY src/ /app/src/
-COPY test/ /app/test/
-
 WORKDIR /app/src
 RUN make setup
 RUN pip install -r /app/test/requirements-test.txt
