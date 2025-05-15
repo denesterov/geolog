@@ -1,0 +1,26 @@
+services:
+  test:
+    build:
+      context: ../..
+      dockerfile: test/docker/Dockerfile
+    container_name: GeologPyTest
+    depends_on:
+      - redis-test
+    environment:
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - TELE_BOT_TOKEN=test_token
+      - PYTHONPATH=/app/src
+    volumes:
+      - ../../src:/app/src
+      - ../:/app/test
+      - ./test-results:/app/test-results
+    command: pytest -v --cov=/app/src --cov-report=html:/app/test-results/coverage -c /app/test/pytest.ini
+
+  redis-test:
+    image: redis/redis-stack-server:latest
+    container_name: redis_stack_test
+    environment:
+      - REDIS_ARGS=--maxmemory 256mb
+    tmpfs:
+      - /data 
