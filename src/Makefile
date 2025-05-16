@@ -24,4 +24,4 @@ test: venv
 	PYTHONPATH=. pytest -v -c ../test/pytest.ini
 
 test-docker:
-	cd ../test/docker && docker-compose up --build --abort-on-container-exit
+	cd ../test/docker && docker compose up --build --force-recreate | tee test.log

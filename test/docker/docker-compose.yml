@@ -14,10 +14,9 @@ services:
       - PYTHONPATH=/app/src;/app/test
       - PYTHONUNBUFFERED=1
     volumes:
-      - ../../src:/app/src
-      - ../:/app/test
+      - ./../../src:/app/src
+      - ./..:/app/test
       - ./test-results:/app/test-results
-    command: pytest -vv --cov=/app/src --cov-report=html:/app/test-results/coverage -c /app/test/pytest.ini
 
   redis-test:
     image: redis/redis-stack-server:latest
@@ -30,4 +29,4 @@ services:
       timeout: 3s
       retries: 30
     tmpfs:
-      - /data 
+      - /data
