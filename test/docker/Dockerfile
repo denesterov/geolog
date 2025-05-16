@@ -5,9 +5,15 @@ ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y git make pip && apt-get clean
 
+RUN mkdir -p /app/src /app/test
+
+# Note: COPY source path is relative to the build context (project root)
 WORKDIR /app/src
-RUN make setup
-RUN pip install -r /app/test/requirements-test.txt
+COPY src/requirements.txt .
+RUN pip install -r requirements.txt
+WORKDIR /app/test
+COPY test/requirements-test.txt .
+RUN pip install -r requirements-test.txt
 
 WORKDIR /app
-CMD ["pytest", "-v", "-c", "/app/test/pytest.ini"] 
+CMD ["pytest", "-vv", "--cov=/app/src", "--cov-report=html:/app/test-results/coverage", "-c", "/app/test/pytest.ini"]
