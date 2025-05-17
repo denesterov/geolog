@@ -72,6 +72,7 @@ def update_session(sess_data, loc, common_ts):
         logger.info(f'update_session. skip coord update by idle. sess_id={sess_id}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
         if time_period > const.AFTER_PAUSE_TIME:
             finish_segment()
+            fields['last_update'] = common_ts
         do_store_point = False
     elif velocity > const.MAX_SPEED:
         logger.info(f'update_session. skip coord update by overspeed. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
@@ -81,7 +82,7 @@ def update_session(sess_data, loc, common_ts):
         fields['last_update'] = common_ts
         do_store_point = False
     else:
-        logger.info(f'update_session. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
+        logger.info(f'update_session. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}, dt={time_period:.1f}') # todo: log debug
         fields['last_lat'] = loc.latitude
         fields['last_long'] = loc.longitude
         fields['last_update'] = common_ts
