@@ -3,6 +3,7 @@ from unittest.mock import patch
 import geobot
 import db
 import conftest
+import test_utils
 
 
 @pytest.mark.asyncio
@@ -40,23 +41,13 @@ async def test_static_location(mock_update_factory, mock_context, mock_location_
 
 
 @pytest.mark.asyncio
-async def test_smoke(mock_update_factory, mock_context, mock_location_factory):
-    up1 = mock_update_factory()
-    up1.message.location = mock_location_factory(45.2393, 19.8412)
-    up1.message.date = create_datetime("2025-05-17 16:20:00")
+async def test_smoke(mock_location_start_factory, mock_location_update_factory, mock_context):
+    up1 = mock_location_start_factory(45.2393, 19.8412, "2025-05-17 16:20:00")
     await geobot.cmd_message(up1, mock_context)
     
-    up2 = mock_update_factory()
-    up2.message.location = mock_location_factory(45.24060, 19.84200)
-    up2.message.edit_date = create_datetime("2025-05-17 16:20:30")
-    up2.edited_message = up2.message
-    await geobot.cmd_message(up2, mock_context)
+    await geobot.cmd_message(mock_location_update_factory(up1, 45.24060, 19.84200, "2025-05-17 16:20:30"), mock_context)
 
-    up3 = mock_update_factory()
-    up3.message.location = mock_location_factory(45.24122, 19.84237)
-    up3.message.edit_date = create_datetime("2025-05-17 16:21:10")
-    up3.edited_message = up3.message
-    await geobot.cmd_message(up3, mock_context)
+    await geobot.cmd_message(mock_location_update_factory(up1, 45.24122, 19.84237, "2025-05-17 16:21:10"), mock_context)
     
     sessions, total = db.get_sessions(up1.effective_user.id, 0, 10, True)
     assert total == 1
