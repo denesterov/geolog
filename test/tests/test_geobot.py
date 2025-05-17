@@ -69,4 +69,4 @@ async def test_cmd_message_static_location(mock_update, mock_context, mock_locat
     assert total == 0
     
     # Verify that no message was sent
-    mock_context.bot.send_message.assert_not_called() 
+    mock_context.bot.send_message.assert_not_called()

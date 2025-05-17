@@ -121,6 +121,7 @@ def get_or_create_session(usr_id, msg_id, tg_chat, loc, common_ts):
             'track_segm_idx' : 1,
             'track_segm_len' : 0,
         }
+        # logger.info(f'get_or_create_session. DEBUG. session={session}')
         new_res = r.hset(uid, mapping=session)
         logger.info(f'get_or_create_session. New session. usr_id={usr_id}, uid={uid}, res={new_res}')
         session['id'] = uid
