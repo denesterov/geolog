@@ -49,56 +49,50 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
 def update_session(sess_data, loc, common_ts):
     sess_id = sess_data['id']
 
-    time_period = 0.0
-    delta = 0.0
-    velocity = 0.0
     track_segm_len = int(sess_data['track_segm_len'])
-    if track_segm_len > 0:
-        last_lat = float(sess_data['last_lat'])
-        last_long = float(sess_data['last_long'])
-        time_period = common_ts - float(sess_data['last_update'])
-        delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-        velocity = delta / time_period if time_period > 0.1 else 100.0 # todo: Do not record overspeed sections
 
-    def finish_segment(sess_data):
+    last_lat = float(sess_data['last_lat'])
+    last_long = float(sess_data['last_long'])
+    time_period = common_ts - float(sess_data['last_update'])
+    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
+    velocity = delta / time_period if time_period > 0.1 else 0.0
+
+    fields = {}
+
+    def finish_segment():
         if track_segm_len == 0:
-            return None
+            return
         segm_id = int(sess_data['track_segm_idx'])
-        logger.info(f'update_session. finishing segment. sess_id={sess_id}, segm_id={segm_id}')
-        return {
-            'track_segm_idx' : segm_id + 1,
-            'track_segm_len' : 0,
-            'last_update' : common_ts,
-        }
+        logger.info(f'update_session. finishing segment. sess_id={sess_id}, segm_id={segm_id}, prev_segm_len={track_segm_len}')
+        fields['track_segm_idx'] = segm_id + 1
+        fields['track_segm_len'] = 0
 
-    fields = None
-    result = None
+    do_store_point = None
     if delta < const.MIN_GEO_DELTA:
         logger.info(f'update_session. skip coord update by idle. sess_id={sess_id}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
         if time_period > const.AFTER_PAUSE_TIME:
-            fields = finish_segment(sess_data)
-            pass
-        result = False
+            finish_segment()
+        do_store_point = False
     elif velocity > const.MAX_SPEED:
         logger.info(f'update_session. skip coord update by overspeed. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-        fields = finish_segment(sess_data)
-        result = False
+        finish_segment()
+        fields['last_lat'] = loc.latitude
+        fields['last_long'] = loc.longitude
+        fields['last_update'] = common_ts
+        do_store_point = False
     else:
         logger.info(f'update_session. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-        fields = {
-            'last_lat' : loc.latitude,
-            'last_long' : loc.longitude,
-            'length' : float(sess_data['length']) + delta,
-            'duration' : float(sess_data['duration']) + time_period,
-            'last_update' : common_ts,
-            'track_segm_len' : track_segm_len + 1,
-        }
-        result = True
-
-    if fields is not None:
+        fields['last_lat'] = loc.latitude
+        fields['last_long'] = loc.longitude
         fields['last_update'] = common_ts
+        fields['length'] = float(sess_data['length']) + delta
+        fields['duration'] = float(sess_data['duration']) + time_period
+        fields['track_segm_len'] = track_segm_len + 1
+        do_store_point = True
+
+    if len(fields) > 0:
         db.update_session(sess_id, fields)
-    return result
+    return do_store_point
 
 
 def duration_to_human(dur: float):
