@@ -3,6 +3,7 @@ import telegram
 from unittest.mock import AsyncMock, MagicMock
 import test_utils
 import time
+import datetime
 import redis.exceptions
 import logging
 
@@ -89,7 +90,7 @@ def mock_location_start_factory():
     def _factory(point: db.TrackPoint):
         result = create_tg_update()
         result.message.location = create_tg_location(point.lat, point.lon, live_period=3600)
-        result.message.date = test_utils.create_datetime(point.timestamp)
+        result.message.date = datetime.datetime.fromtimestamp(point.timestamp)
         return result
     return _factory
 
@@ -109,7 +110,7 @@ def mock_location_update_factory():
         result.message.from_user.first_name = prev_update.message.from_user.first_name
 
         result.message.location = create_tg_location(point.lat, point.lon, live_period=None if final_point else 3600)
-        result.message.edit_date = test_utils.create_datetime(point.timestamp)
+        result.message.edit_date = datetime.datetime.fromtimestamp(point.timestamp)
         result.edited_message = result.message
         return result
     return _factory

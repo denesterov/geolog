@@ -12,7 +12,7 @@ def make_track_point(lat, lon, date_str):
     return db.TrackPoint(lat, lon, create_datetime(date_str).timestamp())
 
 
-def test_gpx_data(exp_segments: list[list[db.TrackPoint]], exp_length: float, exp_duration: float):
+def help_test_gpx_data(sess_id:str, exp_segments: list[list[db.TrackPoint]], exp_length: float, exp_duration: float):
     info, segments = db.get_track(sess_id)
     gpx_data = geobot.create_gpx_data(segments)
 

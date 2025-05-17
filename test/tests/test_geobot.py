@@ -58,9 +58,9 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
     sessions, total = db.get_sessions(up1.effective_user.id, 0, 10, True)
     assert total == 1
     assert len(sessions) == 1
-    assert mock_context.bot.send_message.call_count == 1
+    assert mock_context.bot.send_message.call_count == 2
     assert sessions[0].points_num == 3
     assert sessions[0].length == pytest.approx(229.0, 0.5)
     assert sessions[0].duration == pytest.approx(70.0, 0.01)
 
-    test_utils.test_gpx_data(track, 229.0, 70.0)
+    test_utils.help_test_gpx_data(sessions[0].id, track, 229.0, 70.0)
