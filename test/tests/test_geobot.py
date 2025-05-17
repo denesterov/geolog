@@ -64,3 +64,44 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
     assert sessions[0].duration == pytest.approx(70.0, 0.01)
 
     test_utils.help_test_gpx_data(sessions[0].id, track, 229.0, 70.0)
+
+
+@pytest.mark.asyncio
+async def test_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
+    track = [
+        [
+            test_utils.make_track_point(45.23797, 19.84223, "2025-05-11 20:10:00"),
+            test_utils.make_track_point(45.23864, 19.84186, "2025-05-11 20:10:30"),
+            test_utils.make_track_point(45.23930, 19.84120, "2025-05-11 20:11:00"),
+        ],
+        [
+            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 20:15:00"),
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 20:15:30"),
+            test_utils.make_track_point(45.24122, 19.84237, "2025-05-11 20:16:00"),
+        ],
+    ]
+
+    idle = [
+        test_utils.make_track_point(45.23935, 19.84125, "2025-05-11 20:11:30"),
+        test_utils.make_track_point(45.23937, 19.84127, "2025-05-11 20:12:00"),
+        test_utils.make_track_point(45.23939, 19.84129, "2025-05-11 20:13:00"),
+        test_utils.make_track_point(45.23937, 19.84125, "2025-05-11 20:14:00"),
+        test_utils.make_track_point(45.23935, 19.84127, "2025-05-11 20:14:45"),
+    ]
+
+    up1 = mock_location_start_factory(track[0][0])
+    await geobot.cmd_message(up1, mock_context)
+    for point in track[0][1:]:
+        await geobot.cmd_message(mock_location_update_factory(up1, point), mock_context)
+    for point in idle:
+        await geobot.cmd_message(mock_location_update_factory(up1, point), mock_context)
+    for point in track[1]:
+        await geobot.cmd_message(mock_location_update_factory(up1, point, final_point=point is track[1][-1]), mock_context)
+
+    sessions, total = db.get_sessions(up1.effective_user.id, 0, 10, True)
+    assert total == 1
+    assert len(sessions) == 1
+    assert mock_context.bot.send_message.call_count == 2
+    assert sessions[0].points_num == 6
+
+    test_utils.help_test_gpx_data(sessions[0].id, track, 173.0 + 148.0, 60.0 + 15.0 + 60.0)
