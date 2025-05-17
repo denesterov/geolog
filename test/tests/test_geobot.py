@@ -2,52 +2,52 @@ import pytest
 from unittest.mock import patch
 import geobot
 import db
+import conftest
+
 
 @pytest.mark.asyncio
-async def test_cmd_message_new_location(mock_update, mock_context, mock_location):
-    """Test handling of a new location message"""
-    # Set up the mock location message
-    mock_update.message.location = mock_location
-    
-    # Call the command handler
-    await geobot.cmd_message(mock_update, mock_context)
-    
-    # Verify that a new session was created
-    sessions, total = db.get_sessions(mock_update.effective_user.id, 0, 10, True)
+async def test_smoke(mock_update_factory, mock_context, mock_location_factory):
+    update = mock_update_factory()
+    update.message.location = mock_location_factory()
+    update.message.date = conftest.create_datetime("2025-05-17 12:20:00")
+
+    print(f'location: {update.message.location}, lat={update.message.location.latitude}, lon={update.message.location.longitude}')
+
+    await geobot.cmd_message(update, mock_context)
+
+    sessions, total = db.get_sessions(update.effective_user.id, 0, 10, True)
     assert total == 1
     assert len(sessions) == 1
     
     session = sessions[0]
-    assert session.timestamp == mock_update.message.date.timestamp()
+    assert session.timestamp == update.message.date.timestamp()
     assert session.chat_name == "test_user"
-    
-    # Verify that the bot sent a confirmation message
+
     mock_context.bot.send_message.assert_called_once_with(
-        chat_id=mock_update.effective_chat.id,
+        chat_id=update.effective_chat.id,
         text="Test User started location recording."
     )
 
 @pytest.mark.asyncio
 @pytest.mark.skip
-async def test_cmd_message_edited_location(mock_update, mock_context, mock_location):
+async def test_cmd_message_edited_location(mock_update_factory, mock_context, mock_location_factory):
     """Test handling of an edited location message"""
     # First create a session with initial location
-    mock_update.message.location = mock_location
-    await geobot.cmd_message(mock_update, mock_context)
+    update = mock_update_factory()
+    update.message.location = mock_location_factory()
+    await geobot.cmd_message(update, mock_context)
     
     # Now simulate an edited location
-    mock_update.edited_message = mock_update.message
-    mock_update.message = None
-    mock_location.latitude = 55.7560  # Slightly different coordinates
-    mock_location.longitude = 37.6175
-    mock_update.edited_message.location = mock_location
-    mock_update.edited_message.edit_date = mock_update.edited_message.date
+    update.edited_message = update.message
+    update.message = None
+    update.edited_message.location = mock_location_factory()
+    update.edited_message.edit_date = update.edited_message.date
     
     # Call the command handler for edited message
-    await geobot.cmd_message(mock_update, mock_context)
+    await geobot.cmd_message(update, mock_context)
     
     # Verify that we still have one session
-    sessions, total = db.get_sessions(mock_update.effective_user.id, 0, 10, True)
+    sessions, total = db.get_sessions(update.effective_user.id, 0, 10, True)
     assert total == 1
     
     # Verify that no new confirmation message was sent

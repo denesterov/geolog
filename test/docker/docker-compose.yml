@@ -11,7 +11,7 @@ services:
       - REDIS_HOST=redis-test
       - REDIS_PORT=6379
       - TELE_BOT_TOKEN=test_token
-      - PYTHONPATH=/app/src;/app/test
+      - PYTHONPATH=/app/src:/app/test
       - PYTHONUNBUFFERED=1
     volumes:
       - ./../../src:/app/src

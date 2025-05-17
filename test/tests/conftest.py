@@ -1,6 +1,7 @@
 import pytest
 import telegram
 from unittest.mock import AsyncMock, MagicMock
+import datetime
 import time
 import redis.exceptions
 import logging
@@ -30,6 +31,11 @@ def wait_for_redis(max_retries=30, delay=1):
             time.sleep(delay)
     raise Exception("Redis failed to become ready")
 
+
+def create_datetime(date_str):
+    return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+
+
 @pytest.fixture(scope="session")
 def redis_connection():
     """Create Redis connection"""
@@ -37,6 +43,7 @@ def redis_connection():
     redis = wait_for_redis()
     logger.info("REDIS CONNECTION ESTABLISHED")
     return redis
+
 
 @pytest.fixture(autouse=True)
 def setup_test_db(redis_connection):
@@ -48,29 +55,31 @@ def setup_test_db(redis_connection):
     logger.info("CLEANING UP TEST DATABASE")
     redis_connection.flushall()
 
+
 @pytest.fixture
-def mock_update():
+def mock_update_factory():
     """Create a mock Telegram Update object"""
-    update = MagicMock(spec=telegram.Update)
-    update.effective_user = MagicMock(spec=telegram.User)
-    update.effective_user.id = 12345
-    update.effective_user.first_name = "Test User"
-    
-    update.message = MagicMock(spec=telegram.Message)
-    update.message.chat = MagicMock(spec=telegram.Chat)
-    update.message.chat.id = 67890
-    update.message.chat.type = "private"
-    update.message.chat.title = None
-    update.message.chat.username = "test_user"
-    update.message.message_id = 100
-    update.message.from_user = update.effective_user
-    update.message.date = MagicMock()
-    update.message.date.timestamp.return_value = 1234567890
-    
-    update.edited_message = None
-    update.effective_chat = update.message.chat
-    
-    return update
+    def _factory():
+        update = MagicMock(spec=telegram.Update)
+        
+        update.message = MagicMock(spec=telegram.Message)
+        update.message.chat = MagicMock(spec=telegram.Chat)
+        update.message.chat.id = 67890
+        update.message.chat.type = "private"
+        update.message.chat.title = None
+        update.message.chat.username = "test_user"
+        update.message.message_id = 100
+        update.message.from_user = MagicMock(spec=telegram.User)
+        update.message.from_user.id = 12345
+        update.message.from_user.first_name = "Test User"
+        update.message.date = create_datetime("2025-05-17 12:20:00")
+        
+        update.edited_message = None
+        update.effective_chat = update.message.chat
+        update.effective_user = update.message.from_user
+        return update
+    return _factory
+
 
 @pytest.fixture
 def mock_context():
@@ -79,11 +88,13 @@ def mock_context():
     context.bot = AsyncMock(spec=telegram.Bot)
     return context
 
+
 @pytest.fixture
-def mock_location():
-    """Create a mock Location object"""
-    location = MagicMock(spec=telegram.Location)
-    location.latitude = 55.7558
-    location.longitude = 37.6173
-    location.live_period = 3600
-    return location
+def mock_location_factory():
+    def _factory(latitude=45.2393, longitude=19.8412, live_period=3600):
+        location = MagicMock(spec=telegram.Location)
+        location.latitude = latitude
+        location.longitude = longitude
+        location.live_period = live_period
+        return location
+    return _factory
