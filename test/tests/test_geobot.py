@@ -42,12 +42,18 @@ async def test_static_location(mock_update_factory, mock_context, mock_location_
 
 @pytest.mark.asyncio
 async def test_smoke(mock_location_start_factory, mock_location_update_factory, mock_context):
-    up1 = mock_location_start_factory(45.2393, 19.8412, "2025-05-17 16:20:00")
-    await geobot.cmd_message(up1, mock_context)
-    
-    await geobot.cmd_message(mock_location_update_factory(up1, 45.24060, 19.84200, "2025-05-17 16:20:30"), mock_context)
+    track = [
+        [
+            test_utils.make_track_point(45.2393, 19.8412, "2025-05-17 16:20:00"),
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-17 16:20:30"),
+            test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"),
+        ],
+    ]
 
-    await geobot.cmd_message(mock_location_update_factory(up1, 45.24122, 19.84237, "2025-05-17 16:21:10"), mock_context)
+    up1 = mock_location_start_factory(track[0][0])
+    await geobot.cmd_message(up1, mock_context)
+    await geobot.cmd_message(mock_location_update_factory(up1, track[0][1]), mock_context)
+    await geobot.cmd_message(mock_location_update_factory(up1, track[0][2], final_point=True), mock_context)
     
     sessions, total = db.get_sessions(up1.effective_user.id, 0, 10, True)
     assert total == 1
@@ -56,3 +62,5 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
     assert sessions[0].points_num == 3
     assert sessions[0].length == pytest.approx(229.0, 0.5)
     assert sessions[0].duration == pytest.approx(70.0, 0.01)
+
+    test_utils.test_gpx_data(track, 229.0, 70.0)
