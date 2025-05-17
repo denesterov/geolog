@@ -73,6 +73,7 @@ def mock_update_factory():
         update.message.from_user.id = 12345
         update.message.from_user.first_name = "Test User"
         update.message.date = create_datetime("2025-05-17 12:20:00")
+        update.message.edit_date = None
         
         update.edited_message = None
         update.effective_chat = update.message.chat
