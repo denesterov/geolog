@@ -86,8 +86,9 @@ def update_session(sess_data, loc, common_ts):
         fields['last_lat'] = loc.latitude
         fields['last_long'] = loc.longitude
         fields['last_update'] = common_ts
-        fields['length'] = float(sess_data['length']) + delta
-        fields['duration'] = float(sess_data['duration']) + time_period
+        if track_segm_len > 0:
+            fields['length'] = float(sess_data['length']) + delta
+            fields['duration'] = float(sess_data['duration']) + time_period
         fields['track_segm_len'] = track_segm_len + 1
         do_store_point = True
 

@@ -119,7 +119,7 @@ def get_or_create_session(usr_id, msg_id, tg_chat, loc, common_ts):
             'last_lat' : loc.latitude,
             'last_long' : loc.longitude,
             'track_segm_idx' : 1,
-            'track_segm_len' : 0,
+            'track_segm_len' : 1, # We assume that for a new session, the first point will be stored immediately
         }
         # logger.info(f'get_or_create_session. DEBUG. session={session}')
         new_res = r.hset(uid, mapping=session)
