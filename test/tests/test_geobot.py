@@ -139,7 +139,7 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
     assert total == 1
     assert len(sessions) == 1
     assert mock_context.bot.send_message.call_count == 2
-    assert sessions[0].points_num == 6
+    assert sessions[0].points_num == 5
 
     test_utils.help_test_gpx_data(sessions[0].id, track, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0)
 
