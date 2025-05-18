@@ -1,0 +1,20 @@
+name: Run Tests with Docker Compose
+
+on:
+  push:
+    branches: [ main, tmp/gh-action ]
+  pull_request:
+    branches: [ main, tmp/gh-action ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Run tests via makefile
+        run: |
+          working-directory: ./src
+          make test-docker
