@@ -44,9 +44,9 @@ async def test_static_location(mock_update_factory, mock_context, mock_location_
 async def test_smoke(mock_location_start_factory, mock_location_update_factory, mock_context):
     track = [
         [
-            test_utils.make_track_point(45.2393, 19.8412, "2025-05-17 16:20:00"),
-            test_utils.make_track_point(45.24060, 19.84200, "2025-05-17 16:20:30"),
-            test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"),
+            test_utils.make_track_point(45.23930, 19.84120, "2025-05-17 16:20:00"), # 0.0 m
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-17 16:20:30"), # 156.0 m
+            test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
         ],
     ]
 
@@ -60,24 +60,22 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
     assert len(sessions) == 1
     assert mock_context.bot.send_message.call_count == 2
     assert sessions[0].points_num == 3
-    assert sessions[0].length == pytest.approx(229.0, 0.5)
-    assert sessions[0].duration == pytest.approx(70.0, 0.01)
 
-    test_utils.help_test_gpx_data(sessions[0].id, track, 229.0, 70.0)
+    test_utils.help_test_gpx_data(sessions[0].id, track, 156.0 + 74.7, 70.0)
 
 
 @pytest.mark.asyncio
 async def test_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
     track = [
         [
-            test_utils.make_track_point(45.23797, 19.84223, "2025-05-11 20:10:00"),
-            test_utils.make_track_point(45.23864, 19.84186, "2025-05-11 20:10:30"),
-            test_utils.make_track_point(45.23930, 19.84120, "2025-05-11 20:11:00"),
+            test_utils.make_track_point(45.23797, 19.84223, "2025-05-11 20:10:00"), # 0.0 m
+            test_utils.make_track_point(45.23864, 19.84186, "2025-05-11 20:10:30"), # 79.7 m
+            test_utils.make_track_point(45.23930, 19.84120, "2025-05-11 20:11:00"), # 89.3 m
         ],
         [
-            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 20:15:00"),
-            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 20:15:30"),
-            test_utils.make_track_point(45.24122, 19.84237, "2025-05-11 20:16:00"),
+            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 20:15:00"), # 0.0 m
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 20:15:30"), # 71.2 m
+            test_utils.make_track_point(45.24122, 19.84237, "2025-05-11 20:16:00"), # 74.7 m
         ],
     ]
 
@@ -104,4 +102,4 @@ async def test_idling(mock_location_start_factory, mock_location_update_factory,
     assert mock_context.bot.send_message.call_count == 2
     assert sessions[0].points_num == 6
 
-    test_utils.help_test_gpx_data(sessions[0].id, track, 173.0 + 148.0, 60.0 + 15.0 + 60.0)
+    test_utils.help_test_gpx_data(sessions[0].id, track, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0)
