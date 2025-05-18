@@ -2,9 +2,8 @@ name: Run Tests with Docker Compose
 
 on:
   push:
-    branches: [ main, tmp/gh-action ]
+    branches: [ main ]
   pull_request:
-    branches: [ main, tmp/gh-action ]
 
 jobs:
   tests:
