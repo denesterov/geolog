@@ -24,4 +24,4 @@ test: venv
 	PYTHONPATH=. pytest -v -c ../test/pytest.ini
 
 test-docker:
-	cd ../test/docker && docker compose up --build --abort-on-container-exit | tee test.log
+	cd ../test/docker && docker compose up --build --abort-on-container-exit --exit-code-from test
