@@ -80,25 +80,15 @@ def create_tg_location(latitude=45.2393, longitude=19.8412, live_period=3600):
         return location
 
 
-@pytest.fixture
-def mock_update_factory():
-    return create_tg_update
+def create_tg_start_update(point: db.TrackPoint):
+    result = create_tg_update()
+    result.message.location = create_tg_location(point.lat, point.lon, live_period=3600)
+    result.message.date = datetime.datetime.fromtimestamp(point.timestamp)
+    return result
 
 
-@pytest.fixture
-def mock_location_start_factory():
-    def _factory(point: db.TrackPoint):
-        result = create_tg_update()
-        result.message.location = create_tg_location(point.lat, point.lon, live_period=3600)
-        result.message.date = datetime.datetime.fromtimestamp(point.timestamp)
-        return result
-    return _factory
-
-
-@pytest.fixture
-def mock_location_update_factory():
-    def _factory(prev_update: MagicMock, point: db.TrackPoint, final_point=False):
-        result = create_tg_update()
+def create_tg_location_update(prev_update: MagicMock, point: db.TrackPoint, final_point=False):
+    result = create_tg_update()
 
         result.message.chat.id = prev_update.message.chat.id
         result.message.chat.type = prev_update.message.chat.type
@@ -113,7 +103,21 @@ def mock_location_update_factory():
         result.message.edit_date = datetime.datetime.fromtimestamp(point.timestamp)
         result.edited_message = result.message
         return result
-    return _factory
+
+
+@pytest.fixture
+def mock_update_factory():
+    return create_tg_update
+
+
+@pytest.fixture
+def mock_location_start_factory():
+    return create_tg_start_update
+
+
+@pytest.fixture
+def mock_location_update_factory():
+    return create_tg_location_update
 
 
 @pytest.fixture
