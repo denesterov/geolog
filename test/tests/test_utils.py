@@ -67,7 +67,7 @@ def create_tg_location_update(prev_update: MagicMock, point: db.TrackPoint, fina
     return result
 
 
-def help_test_gpx_data(context, segments: list[list[db.TrackPoint]], skip_segments: set[int],
+async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]], skip_segments: set[int],
         exp_points_num: int, exp_length: float, exp_duration: float):
 
     start_upd = create_tg_start_update(segments[0][0])

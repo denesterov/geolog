@@ -49,7 +49,7 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
             test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
         ],
     ]
-    test_utils.help_test_gpx_data(mock_context, track, {}, 3, 156.0 + 74.7, 70.0)
+    await test_utils.help_test_gpx_data(mock_context, track, {}, 3, 156.0 + 74.7, 70.0)
     assert mock_context.bot.send_message.call_count == 2
 
 
@@ -75,7 +75,7 @@ async def test_idling(mock_location_start_factory, mock_location_update_factory,
         ],
     ]
 
-    test_utils.help_test_gpx_data(mock_context, track, {1}, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0)
+    await test_utils.help_test_gpx_data(mock_context, track, {1}, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0)
     assert mock_context.bot.send_message.call_count == 2
 
 
@@ -97,7 +97,7 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
         ],
     ]
 
-    test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0)
+    await test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0)
     assert mock_context.bot.send_message.call_count == 2
 
 
