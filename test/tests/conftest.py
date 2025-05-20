@@ -3,7 +3,6 @@ import telegram
 from unittest.mock import AsyncMock, MagicMock
 import test_utils
 import time
-import datetime
 import redis.exceptions
 import logging
 

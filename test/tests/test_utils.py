@@ -2,6 +2,7 @@ import datetime
 import db
 import geobot
 import pytest
+import telegram
 from unittest.mock import MagicMock
 
 
