@@ -2,6 +2,7 @@ import datetime
 import db
 import geobot
 import pytest
+from unittest.mock import MagicMock
 
 
 def create_datetime(date_str):
