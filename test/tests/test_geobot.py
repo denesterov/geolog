@@ -92,12 +92,38 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
             test_utils.make_track_point(45.23110, 19.85335, "2025-05-11 21:46:20"), # 774.0 m (92.9 km/h)
         ],
         [
-            test_utils.make_track_point(45.23076, 19.85294, "2025-05-11 21:46:50"), # 49.5 m (from speeding end)
+            test_utils.make_track_point(45.23076, 19.85294, "2025-05-11 21:46:50"), # 0.0 m (from speeding end)
             test_utils.make_track_point(45.23037, 19.85230, "2025-05-11 21:47:20"), # 66.2 m
         ],
     ]
 
-    await test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0)
+    await test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 66.2, 60.0 + 30.0)
+    assert mock_context.bot.send_message.call_count == 2
+
+
+@pytest.mark.asyncio
+async def test_speeding_then_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
+    track = [
+        [
+            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 21:44:20"), # 0.0 m
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 21:44:50"), # 71.2 m
+            test_utils.make_track_point(45.24122, 19.84237, "2025-05-11 21:45:20"), # 74.7 m
+        ],
+        [
+            # Speeding points
+            test_utils.make_track_point(45.23612, 19.84651, "2025-05-11 21:45:50"), # 652.8 m (78.3 km/h)
+            test_utils.make_track_point(45.23110, 19.85335, "2025-05-11 21:46:20"), # 774.0 m (92.9 km/h)
+            # Idling points
+            test_utils.make_track_point(45.23111, 19.85326, "2025-05-11 21:46:50"),
+            test_utils.make_track_point(45.23104, 19.85330, "2025-05-11 21:47:20"),
+        ],
+        [
+            test_utils.make_track_point(45.23076, 19.85294, "2025-05-11 21:46:50"), # 0 m (from idling end)
+            test_utils.make_track_point(45.23037, 19.85230, "2025-05-11 21:47:20"), # 66.2 m
+        ],
+    ]
+
+    await test_utils.help_test_gpx_data(mock_context, track, {1, 2}, 7, 71.2 + 74.7 + 66.2, 60.0 + 30.0)
     assert mock_context.bot.send_message.call_count == 2
 
 
