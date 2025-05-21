@@ -85,7 +85,7 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
         [
             test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 21:44:20"), # 0.0 m
             test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 21:44:50"), # 71.2 m
-            test_utils.make_track_point(45.24122, 19.84237, "2025-05-11 21:45:20"), # 74.7 m
+            test_utils.make_track_point(45.24128, 19.84262, "2025-05-11 21:45:20"), # 74.7 m
         ],
         [ # Speeding points
             test_utils.make_track_point(45.23612, 19.84651, "2025-05-11 21:45:50"), # 652.8 m (78.3 km/h)
