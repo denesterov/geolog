@@ -49,7 +49,7 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
             test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
         ],
     ]
-    await test_utils.help_test_gpx_data(mock_context, track, {}, 3, 156.0 + 74.7, 70.0)
+    await test_utils.help_test_gpx_data(mock_context, track, 3, 156.0 + 74.7, 70.0)
     assert mock_context.bot.send_message.call_count == 2
 
 
@@ -75,7 +75,7 @@ async def test_idling(mock_location_start_factory, mock_location_update_factory,
         ],
     ]
 
-    await test_utils.help_test_gpx_data(mock_context, track, {1}, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0)
+    await test_utils.help_test_gpx_data(mock_context, track, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0, {1})
     assert mock_context.bot.send_message.call_count == 2
 
 
@@ -97,7 +97,7 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
         ],
     ]
 
-    await test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 66.2, 60.0 + 30.0)
+    await test_utils.help_test_gpx_data(mock_context, track, 5, 71.2 + 74.7 + 66.2, 60.0 + 30.0, {1})
     assert mock_context.bot.send_message.call_count == 2
 
 
@@ -113,7 +113,9 @@ async def test_speeding_then_idling(mock_location_start_factory, mock_location_u
             # Speeding points
             test_utils.make_track_point(45.23612, 19.84651, "2025-05-11 21:45:50"), # 652.8 m (78.3 km/h)
             test_utils.make_track_point(45.23110, 19.85335, "2025-05-11 21:46:20"), # 774.0 m (92.9 km/h)
-            # Idling points
+        ],
+        [
+            # First point after speeding, but it is very close to where speeding ended
             test_utils.make_track_point(45.23111, 19.85326, "2025-05-11 21:46:50"),
             test_utils.make_track_point(45.23104, 19.85330, "2025-05-11 21:47:20"),
         ],
@@ -123,7 +125,7 @@ async def test_speeding_then_idling(mock_location_start_factory, mock_location_u
         ],
     ]
 
-    await test_utils.help_test_gpx_data(mock_context, track, {1, 2}, 7, 71.2 + 74.7 + 66.2, 60.0 + 30.0)
+    await test_utils.help_test_gpx_data(mock_context, track, 5, 71.2 + 74.7 + 66.2, 60.0 + 30.0, {1, 2})
     assert mock_context.bot.send_message.call_count == 2
 
 
