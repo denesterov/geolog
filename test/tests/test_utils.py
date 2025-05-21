@@ -92,7 +92,7 @@ async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]], skip_
     assert info.duration == pytest.approx(exp_duration, 0.1)
     assert gpx_data is not None
 
-    filtered_segments = [seg for i, seg in enumerate(exp_segments) if i not in skip_segments]
+    filtered_segments = [seg for i, seg in enumerate(segments) if i not in skip_segments]
     exp_gpx_data = geobot.create_gpx_data(filtered_segments)
 
     assert gpx_data == exp_gpx_data
