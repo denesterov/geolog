@@ -27,7 +27,7 @@ def create_tg_update():
     update.message.from_user = MagicMock(spec=telegram.User)
     update.message.from_user.id = 12345
     update.message.from_user.first_name = "Test User"
-    update.message.date = test_utils.create_datetime("2025-05-17 12:20:00")
+    update.message.date = create_datetime("2025-05-17 12:20:00")
     update.message.edit_date = None
 
     update.edited_message = None
