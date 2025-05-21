@@ -49,19 +49,8 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
             test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
         ],
     ]
-
-    up1 = mock_location_start_factory(track[0][0])
-    await geobot.cmd_message(up1, mock_context)
-    await geobot.cmd_message(mock_location_update_factory(up1, track[0][1]), mock_context)
-    await geobot.cmd_message(mock_location_update_factory(up1, track[0][2], final_point=True), mock_context)
-    
-    sessions, total = db.get_sessions(up1.effective_user.id, 0, 10, True)
-    assert total == 1
-    assert len(sessions) == 1
+    await test_utils.help_test_gpx_data(mock_context, track, {}, 3, 156.0 + 74.7, 70.0)
     assert mock_context.bot.send_message.call_count == 2
-    assert sessions[0].points_num == 3
-
-    test_utils.help_test_gpx_data(sessions[0].id, track, 156.0 + 74.7, 70.0)
 
 
 @pytest.mark.asyncio
@@ -86,22 +75,8 @@ async def test_idling(mock_location_start_factory, mock_location_update_factory,
         ],
     ]
 
-    start_upd = mock_location_start_factory(track[0][0])
-    await geobot.cmd_message(start_upd, mock_context)
-
-    for segment in track:
-        for point in segment:
-            if point is not track[0][0]:
-                final_point = point is track[2][-1]
-                await geobot.cmd_message(mock_location_update_factory(start_upd, point, final_point=final_point), mock_context)
-
-    sessions, total = db.get_sessions(start_upd.effective_user.id, 0, 10, True)
-    assert total == 1
-    assert len(sessions) == 1
+    await test_utils.help_test_gpx_data(mock_context, track, {1}, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0)
     assert mock_context.bot.send_message.call_count == 2
-    assert sessions[0].points_num == 6
-
-    test_utils.help_test_gpx_data(sessions[0].id, track, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0, skip_segments={1})
 
 
 @pytest.mark.asyncio
@@ -122,22 +97,9 @@ async def test_speeding(mock_location_start_factory, mock_location_update_factor
         ],
     ]
 
-    start_upd = mock_location_start_factory(track[0][0])
-    await geobot.cmd_message(start_upd, mock_context)
-
-    for segment in track:
-        for point in segment:
-            if point is not track[0][0]:
-                final_point = point is track[2][-1]
-                await geobot.cmd_message(mock_location_update_factory(start_upd, point, final_point=final_point), mock_context)
-
-    sessions, total = db.get_sessions(start_upd.effective_user.id, 0, 10, True)
-    assert total == 1
-    assert len(sessions) == 1
+    await test_utils.help_test_gpx_data(mock_context, track, {1}, 5, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0)
     assert mock_context.bot.send_message.call_count == 2
-    assert sessions[0].points_num == 5
 
-    test_utils.help_test_gpx_data(sessions[0].id, track, 71.2 + 74.7 + 49.5 + 66.2, 60.0 + 30.0, skip_segments={1})
 
 # todo: add tests for:
 # - idling then speeding
