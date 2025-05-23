@@ -69,14 +69,17 @@ def create_tg_location_update(prev_update: MagicMock, point: db.TrackPoint, fina
     return result
 
 
-async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]], skip_segments: set[int],
-        exp_points_num: int, exp_length: float, exp_duration: float):
+async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]],
+        exp_points_num: int, exp_length: float, exp_duration: float,
+        skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set()):
 
     start_upd = create_tg_start_update(segments[0][0])
     await geobot.cmd_message(start_upd, context)
 
     for segment in segments:
         for point in segment:
+            if point is segments[0][0]:
+                continue
             final_point = point is segments[-1][-1]
             await geobot.cmd_message(create_tg_location_update(start_upd, point, final_point=final_point), context)
 
@@ -91,7 +94,12 @@ async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]], skip_
     gpx_data = geobot.create_gpx_data(db_segments)
     assert gpx_data is not None
 
-    filtered_segments = [seg for i, seg in enumerate(segments) if i not in skip_segments]
+    filtered_segments = []
+    for i, seg in enumerate(segments):
+        if i in skip_segments:
+            continue
+        filtered_segments.append([point for j, point in enumerate(seg) if (i, j) not in skip_points])
+
     exp_gpx_data = geobot.create_gpx_data(filtered_segments)
 
     assert gpx_data == exp_gpx_data
