@@ -35,7 +35,7 @@ async def test_speeding_then_idling(mock_location_start_factory, mock_location_u
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="GH-20")
+@pytest.mark.skip(reason="https://github.com/denesterov/geolog/issues/20")
 async def test_idling_then_speeding(mock_location_start_factory, mock_location_update_factory, mock_context):
     track = [
         [
