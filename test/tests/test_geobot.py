@@ -54,6 +54,24 @@ async def test_smoke(mock_location_start_factory, mock_location_update_factory, 
 
 
 @pytest.mark.asyncio
+async def test_short_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
+    track = [
+        [
+            test_utils.make_track_point(45.23797, 19.84223, "2025-05-11 20:10:00"), # 0.0 m
+            test_utils.make_track_point(45.23864, 19.84186, "2025-05-11 20:10:30"), # 79.7 m
+            test_utils.make_track_point(45.23930, 19.84120, "2025-05-11 20:11:00"), # 89.3 m
+            test_utils.make_track_point(45.23935, 19.84125, "2025-05-11 20:11:30"), # idle
+            test_utils.make_track_point(45.23937, 19.84127, "2025-05-11 20:12:00"), # idle
+            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 20:12:30"), # 82.7 m
+            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 20:13:00"), # 71.2 m
+        ],
+    ]
+
+    await test_utils.help_test_gpx_data(mock_context, track, 5, 79.7 + 89.3 + 82.7 + 71.2, 180.0, skip_points={(0, 3), (0, 4)})
+    assert mock_context.bot.send_message.call_count == 2
+
+
+@pytest.mark.asyncio
 async def test_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
     track = [
         [
