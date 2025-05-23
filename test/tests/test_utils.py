@@ -78,6 +78,8 @@ async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]],
 
     for segment in segments:
         for point in segment:
+            if point is segments[0][0]:
+                continue
             final_point = point is segments[-1][-1]
             await geobot.cmd_message(create_tg_location_update(start_upd, point, final_point=final_point), context)
 
