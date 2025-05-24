@@ -262,3 +262,10 @@ def finish_map_job(sess_id: str):
 def is_map_available(sess_id: str):
     r = get_redis()
     return r.smismember('maps:ready', sess_id)[0] > 0
+
+
+def get_uid_from_sess_id(sess_id: str):
+    sess_id_split = sess_id.split(':')
+    assert len(sess_id_split) == 2
+    assert sess_id_split[0] == 'session'
+    return uuid.UUID(sess_id_split[1])

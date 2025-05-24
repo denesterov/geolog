@@ -143,7 +143,10 @@ async def output_track_to_chat(sess_id: str, update: telegram.Update, context: t
     sess_dur = info.duration
 
     ts_str = time.asctime(time.gmtime(info.timestamp))
-    descr = f'Here is the track\nStart time {ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}'
+    descr = f'Here is the track\n'
+        f'Start time {ts_str} UTC\n'
+        f'Length {sess_len:.1f} km, duration {duration_to_human(sess_dur)}\n'
+        f'Link to share this track: {form_deep_link(sess_id)}'
     
     get_map_res = maps.get_map(sess_id)
     if get_map_res is not None:
@@ -174,6 +177,12 @@ def parse_deep_link(args):
             except ValueError:
                 pass
     return None
+
+
+def form_deep_link(sess_id: str):
+    uid = db.get_uid_from_sess_id(sess_id)
+    uid64 = base64.b64encode(uid.bytes)
+    return f'https://t.me/{const.GEOLOG_BOT_NAME}?start={uid64.decode("utf-8")}'
 
 
 async def sessions_menu_item(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
@@ -278,12 +287,7 @@ def mainloop():
         level=logging.INFO
     )
 
-    BOT_TOKEN = os.environ.get('TELE_BOT_TOKEN')
-    if BOT_TOKEN is not None and BOT_TOKEN != '':
-        logger.info('Bot token is set!')
-    else:
-        logger.error('Bot token env var is not set (TELE_BOT_TOKEN)!')
-        exit(1)
+    const.setup()
 
     db.setup_redis()
 
