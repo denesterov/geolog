@@ -143,7 +143,10 @@ async def output_track_to_chat(sess_id: str, update: telegram.Update, context: t
     sess_dur = info.duration
 
     ts_str = time.asctime(time.gmtime(info.timestamp))
-    descr = f'Here is the track\nStart time {ts_str} UTC\nLength {sess_len:.1f} km, duration {duration_to_human(sess_dur)}'
+    descr = f'Here is the track\n' \
+        f'Start time {ts_str} UTC\n' \
+        f'Length {sess_len:.1f} km, duration {duration_to_human(sess_dur)}\n' \
+        f'Link to share this track: {form_deep_link(sess_id)}'
     
     get_map_res = maps.get_map(sess_id)
     if get_map_res is not None:
@@ -161,24 +164,27 @@ async def output_track_to_chat(sess_id: str, update: telegram.Update, context: t
 
 def parse_deep_link(args):
     logger.info(f'parse_deep_link. args={args}')
-    if (len(args) == 1 and type(args[0]) == 'str'):
-        logger.info(f'parse_deep_link. args0={args[0]}')
+    if (len(args) == 1 and type(args[0]) == str):
         b64 = base64.b64decode(args[0])
-
-        logger.info(f'parse_deep_link. b64={b64}, b64len={len(b64)}')
         if len(b64) == 16:
             try:
-                logger.info(f'parse_deep_link. UUID')
                 sess_uuid = uuid.UUID(bytes = b64)
+                logger.info(f'parse_deep_link. sess_uuid={sess_uuid}')
                 return 'session:' + str(sess_uuid)
             except ValueError:
                 pass
     return None
 
 
+def form_deep_link(sess_id: str):
+    uid = db.get_uid_from_sess_id(sess_id)
+    uid64 = base64.b64encode(uid.bytes)
+    return f'https://t.me/{const.GEOLOG_BOT_NAME}?start={uid64.decode("utf-8")}'
+
+
 async def sessions_menu_item(sess_id: str, update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     logger.info(f'sessions_menu_item. sess_id={sess_id}')
-    output_track_to_chat(sess_id, update, context)
+    await output_track_to_chat(sess_id, update, context)
 
 
 def sessions_menu_create(usr_id: int, offset: int, page: int):
@@ -211,8 +217,7 @@ async def cmd_start(update: telegram.Update, context: telegram.ext.ContextTypes.
         await context.bot.deleteMessage(message_id=update.effective_message.id, chat_id=update.effective_chat.id)
         sess_id = parse_deep_link(context.args)
         if sess_id is not None:
-            await update.message.reply_text(f'Shared track: {sess_id}')
-            output_track_to_chat(sess_id, update, context)
+            await output_track_to_chat(sess_id, update, context)
         else:
             await update.message.reply_text(f'Wrong deep link.')
     else:
@@ -278,16 +283,11 @@ def mainloop():
         level=logging.INFO
     )
 
-    BOT_TOKEN = os.environ.get('TELE_BOT_TOKEN')
-    if BOT_TOKEN is not None and BOT_TOKEN != '':
-        logger.info('Bot token is set!')
-    else:
-        logger.error('Bot token env var is not set (TELE_BOT_TOKEN)!')
-        exit(1)
+    const.setup()
 
     db.setup_redis()
 
-    application = telegram.ext.ApplicationBuilder().token(BOT_TOKEN).build()
+    application = telegram.ext.ApplicationBuilder().token(const.BOT_TOKEN).build()
 
     application.add_handler(telegram.ext.CommandHandler('start', cmd_start))
     application.add_handler(telegram.ext.CommandHandler('tracks', cmd_tracks))
