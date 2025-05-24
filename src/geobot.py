@@ -291,7 +291,7 @@ def mainloop():
 
     db.setup_redis()
 
-    application = telegram.ext.ApplicationBuilder().token(BOT_TOKEN).build()
+    application = telegram.ext.ApplicationBuilder().token(const.BOT_TOKEN).build()
 
     application.add_handler(telegram.ext.CommandHandler('start', cmd_start))
     application.add_handler(telegram.ext.CommandHandler('tracks', cmd_tracks))

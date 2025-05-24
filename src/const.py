@@ -1,3 +1,7 @@
+import os
+import logging
+
+logger = logging.getLogger('geobot-const')
 
 MIN_GEO_DELTA = 30.0 # Minimal delta in meters for next track point to be recorded
 MAX_SPEED = 16.0 # Maximum speed, m/s
