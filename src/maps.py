@@ -12,10 +12,8 @@ logger = logging.getLogger('geobot-maps')
 def get_filename(sess_id: str):
     base = os.environ.get('MAP_IMAGES_DIR', const.DEFAULT_BASE_DIR)
 
-    sess_id_split = sess_id.split(':')
-    assert len(sess_id_split) == 2
-    assert sess_id_split[0] == 'session'
-    fname = f'map-{sess_id_split[1]}.jpg'
+    uid = db.get_uid_from_sess_id(sess_id)
+    fname = f'map-{uid}.jpg'
 
     return os.path.join(base, fname)
 
