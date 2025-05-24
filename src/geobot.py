@@ -143,9 +143,9 @@ async def output_track_to_chat(sess_id: str, update: telegram.Update, context: t
     sess_dur = info.duration
 
     ts_str = time.asctime(time.gmtime(info.timestamp))
-    descr = f'Here is the track\n'
-        f'Start time {ts_str} UTC\n'
-        f'Length {sess_len:.1f} km, duration {duration_to_human(sess_dur)}\n'
+    descr = f'Here is the track\n' \
+        f'Start time {ts_str} UTC\n' \
+        f'Length {sess_len:.1f} km, duration {duration_to_human(sess_dur)}\n' \
         f'Link to share this track: {form_deep_link(sess_id)}'
     
     get_map_res = maps.get_map(sess_id)
