@@ -101,5 +101,5 @@ async def help_test_gpx_data(context, segments: list[list[db.TrackPoint]],
         filtered_segments.append([point for j, point in enumerate(seg) if (i, j) not in skip_points])
 
     exp_gpx_data = geobot.create_gpx_data(filtered_segments)
-
     assert gpx_data == exp_gpx_data
+    return exp_gpx_data, start_upd, sessions[0].id

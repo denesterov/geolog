@@ -53,6 +53,7 @@ def setup_test_db(redis_connection):
 def mock_context():
     context = MagicMock(spec=telegram.ext.ContextTypes.DEFAULT_TYPE)
     context.bot = AsyncMock(spec=telegram.Bot)
+    context.args = []
     return context
 
 
