@@ -212,8 +212,9 @@ def sessions_menu_create(usr_id: int, offset: int, page: int):
 
 async def cmd_start(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
     usr_id = update.effective_user.id
-    if context.args is not None:
-        logger.info(f'cmd_start. deeplink. usr_id={usr_id}, args={context.args}')
+    logger.info(f'cmd_start. usr_id={usr_id}, args={context.args}')
+    if context.args is not None and len(context.args) == 1:
+        logger.debug(f'cmd_start. deeplink. usr_id={usr_id}')
         await context.bot.deleteMessage(message_id=update.effective_message.id, chat_id=update.effective_chat.id)
         sess_id = parse_deep_link(context.args)
         if sess_id is not None:
@@ -221,8 +222,8 @@ async def cmd_start(update: telegram.Update, context: telegram.ext.ContextTypes.
         else:
             await update.message.reply_text(f'Wrong deep link.')
     else:
-        logger.info(f'cmd_start. general start. usr_id={usr_id}, msg={update.message}')
-        await update.message.reply_text(f'GENERAL START')
+        logger.debug(f'cmd_start. general start. usr_id={usr_id}, msg={update.message}')
+        await update.message.reply_text(f'Welcome to GeoGraph bot. Share your location to start recording.')
 
 
 async def cmd_tracks(update: telegram.Update, context: telegram.ext.ContextTypes.DEFAULT_TYPE):
