@@ -18,4 +18,4 @@ COPY test/requirements-test.txt .
 RUN pip install -r requirements-test.txt
 
 WORKDIR /app
-CMD ["pytest", "-vv", "--cov=/app/src", "--cov-report=html:/app/test-results/coverage", "-c", "/app/test/pytest.ini"]
+CMD ["pytest", "-vv", "--cov=/app/src", "--cov-report=term-missing", "-c", "/app/test/pytest.ini"]
