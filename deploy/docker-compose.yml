@@ -1,8 +1,8 @@
 services:
   bot:
     build:
-      context: ../src
-      dockerfile: ../deploy/botpy/Dockerfile
+      context: ../.
+      dockerfile: deploy/botpy/Dockerfile
     container_name: GeologPy
     depends_on:
       - redis
