@@ -10,7 +10,7 @@ logger = logging.getLogger('tracker')
 Point = namedtuple('Point', ['lat', 'long', 'ts'])
 
 
-def new_session_data(usr_id, chat_id, msg_id, chat_type='PRIV', chat_name='', lat=0.0, lon=0.0, timestamp=0):
+def new_session_data(usr_id, chat_id, msg_id, chat_type='PRIV', chat_name='', lat=0.0, long=0.0, timestamp=0):
     return {
         'usr_id': usr_id,
         'chat_id': chat_id,
@@ -22,7 +22,7 @@ def new_session_data(usr_id, chat_id, msg_id, chat_type='PRIV', chat_name='', la
         'duration' : 0.0,
         'last_update' : timestamp,
         'last_lat' : lat,
-        'last_long' : lon,
+        'last_long' : long,
         'track_segm_idx' : 1,
         'track_segm_len' : 1, # We assume that for a new session, the first point will be stored immediately
     }
@@ -32,7 +32,7 @@ def new_session_data_ex(usr_id, msg_id, tg_chat, loc, timestamp):
     return new_session_data(usr_id, tg_chat.id, msg_id,
         chat_type='PRIV' if tg_chat.type == 'private' else 'PUB',
         chat_name=tg_chat.title if tg_chat.title is not None else (tg_chat.username if tg_chat.username is not None else '-'),
-        lat=loc.latitude, lon=loc.longitude, timestamp=timestamp)
+        lat=loc.latitude, long=loc.longitude, timestamp=timestamp)
 
 
 
@@ -87,12 +87,12 @@ class Tracker:
         self.points = points
 
 
-    def finish_segment():
-        track_segm_len = self.session.track_segm_len
-        if track_segm_len == 0:
+    def finish_segment(self):
+        segm_len = self.session.track_segm_len
+        if segm_len == 0:
             return
         segm_id = self.session.track_segm_idx
-        logger.info(f'finish_segment. sess_id={self.session.id}, segm_id={segm_id}, prev_segm_len={track_segm_len}')
+        logger.info(f'finish_segment. sess_id={self.session.id}, {segm_id=}, {segm_len=}')
         self.session.track_segm_idx = segm_id + 1
         self.session.track_segm_len = 0
 
@@ -109,7 +109,7 @@ class Tracker:
             return
 
         sess_id = self.session.id
-        track_segm_len = self.session.track_segm_len
+        segm_len = self.session.track_segm_len
         timestamp = location.ts
 
         time_period = timestamp - self.session.last_update
@@ -117,19 +117,19 @@ class Tracker:
         velocity = delta / time_period if time_period > 0.1 else 0.0
 
         if delta < const.MIN_GEO_DELTA:
-            logger.info(f'update. skip coord update by idle. sess_id={sess_id}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
+            logger.info(f'update. skip coord update by idle. {sess_id=}, {delta=:.1f}, dt={time_period:.1f}') # todo: log debug
             if time_period > const.AFTER_PAUSE_TIME:
-                finish_segment()
+                self.finish_segment()
                 self.session.last_update = timestamp
         elif velocity > const.MAX_SPEED:
-            logger.info(f'update. skip coord update by overspeed. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-            finish_segment()
+            logger.info(f'update. skip coord update by overspeed. {sess_id=}, {delta=:.1f}, {velocity=:.1f}') # todo: log debug
+            self.finish_segment()
             self.update_last_location(location)
         else:
-            logger.info(f'update. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}, dt={time_period:.1f}') # todo: log debug
+            logger.info(f'update. writing update. {sess_id=}, {segm_len=}, {delta=:.1f}, {velocity=:.1f}, dt={time_period:.1f}') # todo: log debug
             self.update_last_location(location)
-            if track_segm_len > 0:
+            if segm_len > 0:
                 self.session.length = self.session.length + delta
                 self.session.duration = self.session.duration + time_period
-            self.session.track_segm_len = track_segm_len + 1
+            self.session.track_segm_len = segm_len + 1
             self.points.add(location)

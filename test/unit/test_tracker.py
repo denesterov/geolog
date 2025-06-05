@@ -10,16 +10,18 @@ def test_creation():
 
 
 def test_new_session():
-    tr, sd, pd = tracker_test_utils.create_basic_env()
-    tr.update(tracker.Point(45.2393, 19.8412, 100500))
-    assert sd.get_dirty_fields() == {'track_segm_len', 'last_lat', 'last_long', 'last_update'}
+    p = tracker.Point(45.2393, 19.8412, 100500)
+    tr, sd, pd = tracker_test_utils.create_basic_env(p)
+    tr.update(p, location_is_new=True)
+    assert sd.get_dirty_fields() == set() #{'track_segm_len', 'last_lat', 'last_long', 'last_update', 'length', 'duration'}
     assert len(pd.points) == 1
 
 
 def test_smoke():
-    tr, sd, pd = tracker_test_utils.create_basic_env()
+    fp = tracker.Point(45.23930, 19.84120, 100500)
+    tr, sd, pd = tracker_test_utils.create_basic_env(fp)
 
-    tr.update(tracker.Point(45.23930, 19.84120, 100500)) # 0.0 m
+    tr.update(fp, location_is_new=True) # 0.0 m
     tr.update(tracker.Point(45.24060, 19.84200, 100530)) # 156.0 m
     tr.update(tracker.Point(45.24122, 19.84237, 100570)) # 74.7 m
 
