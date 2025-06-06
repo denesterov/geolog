@@ -125,8 +125,8 @@ def create_gpx_data(segments):
         for pnt in segm_points:
             wp = gpx.Waypoint()
             wp.lat = pnt.lat
-            wp.lon = pnt.lon
-            wp.time = datetime.datetime.fromtimestamp(pnt.timestamp)
+            wp.lon = pnt.long
+            wp.time = datetime.datetime.fromtimestamp(pnt.ts)
             segment.append(wp)
     
     return gpx_inst.to_string()

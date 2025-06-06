@@ -10,8 +10,8 @@ import conftest
 async def test_cmd_start_deeplink(mock_update_factory, mock_context):
     track = [
         [
-            test_utils.make_track_point(45.23996, 19.84185, "2025-05-11 21:44:20"),
-            test_utils.make_track_point(45.24060, 19.84200, "2025-05-11 21:44:50"),
+            test_utils.make_point(45.23996, 19.84185, "2025-05-11 21:44:20"),
+            test_utils.make_point(45.24060, 19.84200, "2025-05-11 21:44:50"),
         ],
     ]
 
