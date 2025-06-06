@@ -3,6 +3,7 @@ import geobot
 import db
 import conftest
 import test_utils
+import cases_data
 
 
 @pytest.mark.asyncio
@@ -40,20 +41,14 @@ async def test_static_location(mock_update_factory, mock_context, mock_location_
 
 
 @pytest.mark.asyncio
-async def test_smoke(mock_location_start_factory, mock_location_update_factory, mock_context):
-    track = [
-        [
-            test_utils.make_track_point(45.23930, 19.84120, "2025-05-17 16:20:00"), # 0.0 m
-            test_utils.make_track_point(45.24060, 19.84200, "2025-05-17 16:20:30"), # 156.0 m
-            test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
-        ],
-    ]
-    await test_utils.help_test_gpx_data(mock_context, track, 3, 156.0 + 74.7, 70.0)
+async def test_smoke(mock_context):
+    c = cases_data.smoke
+    await test_utils.help_test_gpx_data(mock_context, c.track, c.expect_gpx_points, c.expect_length, c.expect_duration)
     assert mock_context.bot.send_message.call_count == 2
 
 
 @pytest.mark.asyncio
-async def test_short_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
+async def test_short_idling(mock_context):
     track = [
         [
             test_utils.make_track_point(45.23797, 19.84223, "2025-05-11 20:10:00"), # 0.0 m
