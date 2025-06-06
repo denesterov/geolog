@@ -18,9 +18,9 @@ class Case:
 smoke = Case(
     track = [
         [
-            test_utils.make_track_point(45.23930, 19.84120, "2025-05-17 16:20:00"), # 0.0 m
-            test_utils.make_track_point(45.24060, 19.84200, "2025-05-17 16:20:30"), # 156.0 m
-            test_utils.make_track_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
+            test_utils.make_point(45.23930, 19.84120, "2025-05-17 16:20:00"), # 0.0 m
+            test_utils.make_point(45.24060, 19.84200, "2025-05-17 16:20:30"), # 156.0 m
+            test_utils.make_point(45.24122, 19.84237, "2025-05-17 16:21:10"), # 74.7 m
         ],
     ],
     expect_gpx_points = 3,
