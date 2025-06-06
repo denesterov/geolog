@@ -12,7 +12,7 @@ def create_datetime(date_str):
     return datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
 
 
-def make_track_point(lat, long, date_str):
+def make_point(lat, long, date_str):
     return common.Point(lat, long, create_datetime(date_str).timestamp())
 
 
