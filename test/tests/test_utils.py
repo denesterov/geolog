@@ -74,7 +74,6 @@ def create_tg_location_update(prev_update: MagicMock, point: common.Point, final
 async def help_test_gpx_data(context, segments: list[list[common.Point]],
         exp_points_num: int, exp_length: float, exp_duration: float,
         skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set()):
-
     start_upd = create_tg_start_update(segments[0][0])
     await geobot.cmd_message(start_upd, context)
 
