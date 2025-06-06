@@ -1,13 +1,10 @@
 # import telegram
-import uuid
 import const
-from collections import namedtuple
+import common
 from geopy import distance
 import logging
 
 logger = logging.getLogger('tracker')
-
-Point = namedtuple('Point', ['lat', 'long', 'ts'])
 
 
 def new_session_data(usr_id, chat_id, msg_id, chat_type='PRIV', chat_name='', lat=0.0, long=0.0, timestamp=0):
@@ -76,7 +73,7 @@ class PointsData:
     def __init__(self):
         self.points = []
 
-    def add(self, point: Point):
+    def add(self, point: common.Point):
         self.points.append(point)
 
 
@@ -97,13 +94,13 @@ class Tracker:
         self.session.track_segm_len = 0
 
 
-    def update_last_location(self, location: Point):
+    def update_last_location(self, location: common.Point):
         self.session.last_lat = location.lat
         self.session.last_long = location.long
         self.session.last_update = location.ts
 
 
-    def update(self, location: Point, location_is_new: bool = False):
+    def update(self, location: common.Point, location_is_new: bool = False):
         if location_is_new:
             self.points.add(location)
             return

@@ -1,10 +1,10 @@
-import tracker
+import common
 import test_utils
 
 
 class Case:
     def __init__(self,
-                 track: list[list[tracker.Point]],
+                 track: list[list[common.Point]],
                  expect_gpx_points:int, expect_length:float, expect_duration:float,
                  skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set()):
         self.track = track

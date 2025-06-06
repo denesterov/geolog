@@ -4,6 +4,7 @@ import geobot
 import tracker
 import pytest
 import telegram
+import common
 from unittest.mock import MagicMock
 
 
@@ -12,7 +13,7 @@ def create_datetime(date_str):
 
 
 def make_track_point(lat, long, date_str):
-    return tracker.Point(lat, long, create_datetime(date_str).timestamp())
+    return common.Point(lat, long, create_datetime(date_str).timestamp())
 
 
 def create_tg_update():
@@ -45,14 +46,14 @@ def create_tg_location(latitude=45.2393, longitude=19.8412, live_period=3600):
     return location
 
 
-def create_tg_start_update(point: tracker.Point):
+def create_tg_start_update(point: common.Point):
     result = create_tg_update()
     result.message.location = create_tg_location(point.lat, point.long, live_period=3600)
     result.message.date = datetime.datetime.fromtimestamp(point.ts)
     return result
 
 
-def create_tg_location_update(prev_update: MagicMock, point: tracker.Point, final_point=False):
+def create_tg_location_update(prev_update: MagicMock, point: common.Point, final_point=False):
     result = create_tg_update()
 
     result.message.chat.id = prev_update.message.chat.id
@@ -70,7 +71,7 @@ def create_tg_location_update(prev_update: MagicMock, point: tracker.Point, fina
     return result
 
 
-async def help_test_gpx_data(context, segments: list[list[tracker.Point]],
+async def help_test_gpx_data(context, segments: list[list[common.Point]],
         exp_points_num: int, exp_length: float, exp_duration: float,
         skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set()):
 

@@ -1,5 +1,6 @@
 import pytest
 import tracker
+import common
 
 
 def test_session_data_init():
@@ -40,5 +41,5 @@ def test_session_data_invalid_attribute():
 def test_points_data():
     data = tracker.PointsData()
     assert data.points == []
-    data.add(tracker.Point(33.44, 55.66, 1749053938))
-    assert data.points == [tracker.Point(33.44, 55.66, 1749053938)]
+    data.add(common.Point(33.44, 55.66, 1749053938))
+    assert data.points == [common.Point(33.44, 55.66, 1749053938)]
