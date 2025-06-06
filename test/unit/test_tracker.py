@@ -1,6 +1,7 @@
 import pytest
-import tracker
+import common
 import tracker_test_utils
+import cases_data
 
 
 def test_creation():
@@ -10,26 +11,36 @@ def test_creation():
 
 
 def test_new_session():
-    p = tracker.Point(45.2393, 19.8412, 100500)
+    p = common.Point(45.2393, 19.8412, 100500)
     tr, sd, pd = tracker_test_utils.create_basic_env(p)
     tr.update(p, location_is_new=True)
-    assert sd.get_dirty_fields() == set() #{'track_segm_len', 'last_lat', 'last_long', 'last_update', 'length', 'duration'}
+    assert sd.get_dirty_fields() == set()
     assert len(pd.points) == 1
 
 
 def test_smoke():
-    fp = tracker.Point(45.23930, 19.84120, 100500)
-    tr, sd, pd = tracker_test_utils.create_basic_env(fp)
+    tracker_test_utils.help_test_track(cases_data.smoke)
 
-    tr.update(fp, location_is_new=True) # 0.0 m
-    tr.update(tracker.Point(45.24060, 19.84200, 100530)) # 156.0 m
-    tr.update(tracker.Point(45.24122, 19.84237, 100570)) # 74.7 m
+def test_short_idling():
+    tracker_test_utils.help_test_track(cases_data.short_idling)
 
-    assert sd.get_dirty_fields() == {'track_segm_len', 'last_lat', 'last_long', 'last_update', 'length', 'duration'}
-    print(f'SESSION LENGTH={sd.length}, DURATION={sd.duration}')
-    assert sd.length == pytest.approx(156.0 + 74.7, 1.0)
-    assert sd.duration == 70.0
-    assert len(pd.points) == 3
-    assert pd.points[0] == tracker.Point(45.23930, 19.84120, 100500)
-    assert pd.points[1] == tracker.Point(45.24060, 19.84200, 100530)
-    assert pd.points[2] == tracker.Point(45.24122, 19.84237, 100570)
+def test_general_idling():
+    tracker_test_utils.help_test_track(cases_data.general_idling)
+
+def test_speeding():
+    tracker_test_utils.help_test_track(cases_data.speeding)
+
+def test_speeding_then_idling():
+    tracker_test_utils.help_test_track(cases_data.speeding_then_idling)
+
+@pytest.mark.skip(reason="https://github.com/denesterov/geolog/issues/20")
+def test_idling_then_speeding():
+    tracker_test_utils.help_test_track(cases_data.idling_then_speeding)
+
+@pytest.mark.skip(reason="https://github.com/denesterov/geolog/issues/22")
+def test_right_away_speeding():
+    tracker_test_utils.help_test_track(cases_data.right_away_speeding)
+
+@pytest.mark.skip(reason="https://github.com/denesterov/geolog/issues/22")
+def test_long_idling_then_speeding():
+    tracker_test_utils.help_test_track(cases_data.long_idling_then_speeding)
