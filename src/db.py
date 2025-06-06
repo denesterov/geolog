@@ -5,12 +5,11 @@ from redis.commands.search.field import TextField, NumericField, TagField
 from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 import uuid
+import common
 from collections import namedtuple
 
 
 Session = namedtuple('Session', ['id', 'timestamp', 'chat_name', 'points_num', 'length', 'duration'])
-TrackPoint = namedtuple('TrackPoint', ['lat', 'lon', 'timestamp'])
-TrackInfo = namedtuple('TrackInfo', ['length', 'duration', 'timestamp', 'points_total'])
 
 logger = logging.getLogger('geobot-db')
 
@@ -222,13 +221,13 @@ def get_track(sess_id: str):
         else:
             points = []
             by_segm_id[segm_id] = points
-        points.append(TrackPoint(lat, lon, ts))
+        points.append(common.Point(lat, lon, ts))
     
     segments = []
     for segm_id in sorted(by_segm_id.keys()):
         segments.append(by_segm_id[segm_id])
 
-    info = TrackInfo(float(sess_data['length']), float(sess_data['duration']), float(sess_data['ts']), len(raw_points))
+    info = common.TrackInfo(float(sess_data['length']), float(sess_data['duration']), float(sess_data['ts']), len(raw_points))
     return info, segments
 
 
