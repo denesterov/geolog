@@ -48,6 +48,33 @@ short_idling = Case(
 )
 
 
+general_idling = Case(
+    track = [
+        [
+            test_utils.make_point(45.23797, 19.84223, "2025-05-11 20:10:00"), # 0.0 m
+            test_utils.make_point(45.23864, 19.84186, "2025-05-11 20:10:30"), # 79.7 m
+            test_utils.make_point(45.23930, 19.84120, "2025-05-11 20:11:00"), # 89.3 m
+        ],
+        [ # Idling points
+            test_utils.make_point(45.23935, 19.84125, "2025-05-11 20:11:30"),
+            test_utils.make_point(45.23937, 19.84127, "2025-05-11 20:12:00"),
+            test_utils.make_point(45.23939, 19.84129, "2025-05-11 20:13:00"),
+            test_utils.make_point(45.23937, 19.84125, "2025-05-11 20:14:00"),
+            test_utils.make_point(45.23935, 19.84127, "2025-05-11 20:14:45"),
+        ],
+        [
+            test_utils.make_point(45.23996, 19.84185, "2025-05-11 20:15:00"), # 0.0 m
+            test_utils.make_point(45.24060, 19.84200, "2025-05-11 20:15:30"), # 71.2 m
+            test_utils.make_point(45.24122, 19.84237, "2025-05-11 20:16:00"), # 74.7 m
+        ],
+    ],
+    expect_gpx_points = 6,
+    expect_length = 79.7 + 89.0 + 71.2 + 74.7,
+    expect_duration = 60.0 + 60.0,
+    skip_segments={1},
+)
+
+
 async def help_test_gpx_data(context, c: Case):
     await test_utils.help_test_gpx_data(context, c.track, c.expect_gpx_points,
             c.expect_length, c.expect_duration, c.skip_segments, c.skip_points)

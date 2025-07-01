@@ -54,27 +54,7 @@ async def test_short_idling(mock_context):
 
 @pytest.mark.asyncio
 async def test_idling(mock_location_start_factory, mock_location_update_factory, mock_context):
-    track = [
-        [
-            test_utils.make_point(45.23797, 19.84223, "2025-05-11 20:10:00"), # 0.0 m
-            test_utils.make_point(45.23864, 19.84186, "2025-05-11 20:10:30"), # 79.7 m
-            test_utils.make_point(45.23930, 19.84120, "2025-05-11 20:11:00"), # 89.3 m
-        ],
-        [ # Idling points
-            test_utils.make_point(45.23935, 19.84125, "2025-05-11 20:11:30"),
-            test_utils.make_point(45.23937, 19.84127, "2025-05-11 20:12:00"),
-            test_utils.make_point(45.23939, 19.84129, "2025-05-11 20:13:00"),
-            test_utils.make_point(45.23937, 19.84125, "2025-05-11 20:14:00"),
-            test_utils.make_point(45.23935, 19.84127, "2025-05-11 20:14:45"),
-        ],
-        [
-            test_utils.make_point(45.23996, 19.84185, "2025-05-11 20:15:00"), # 0.0 m
-            test_utils.make_point(45.24060, 19.84200, "2025-05-11 20:15:30"), # 71.2 m
-            test_utils.make_point(45.24122, 19.84237, "2025-05-11 20:16:00"), # 74.7 m
-        ],
-    ]
-
-    await test_utils.help_test_gpx_data(mock_context, track, 6, 79.7 + 89.0 + 71.2 + 74.7, 60.0 + 60.0, {1})
+    await cases_data.help_test_gpx_data(mock_context, cases_data.general_idling)
     assert mock_context.bot.send_message.call_count == 2
 
 
