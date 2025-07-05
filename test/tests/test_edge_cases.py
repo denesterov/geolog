@@ -1,8 +1,4 @@
 import pytest
-from unittest.mock import patch
-import geobot
-import db
-import conftest
 import test_utils
 
 

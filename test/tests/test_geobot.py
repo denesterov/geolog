@@ -1,7 +1,6 @@
 import pytest
 import geobot
 import db
-import conftest
 import test_utils
 import cases_data
 
