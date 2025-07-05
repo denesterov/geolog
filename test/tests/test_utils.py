@@ -1,7 +1,6 @@
 import datetime
 import db
 import geobot
-import tracker
 import pytest
 import telegram
 import common

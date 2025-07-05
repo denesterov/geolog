@@ -1,9 +1,7 @@
 import pytest
 import geobot
-import db
 import test_utils
 import const
-import conftest
 
 
 @pytest.mark.asyncio
