@@ -25,7 +25,10 @@ def help_test_track(cs: cases_data.Case):
         for pnt in segm:
             tr.update(pnt, location_is_new=pnt is cs.track[0][0])
 
-    assert sd.get_dirty_fields() == {'track_segm_len', 'last_lat', 'last_long', 'last_update', 'length', 'duration'}
+    print(f'help_test_track. {sd.get_dirty_fields()=}')
+    assert sd.get_dirty_fields() == cs.expected_dirty_fields
+
+    print(f'help_test_track. {sd.length=}, {sd.duration=}, {len(pd.points)=}')
     assert sd.length == pytest.approx(cs.expect_length, 1.0)
     assert sd.duration == pytest.approx(cs.expect_duration, 0.1)
     assert len(pd.points) == cs.expect_gpx_points

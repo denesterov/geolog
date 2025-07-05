@@ -6,13 +6,15 @@ class Case:
     def __init__(self,
                  track: list[list[common.Point]],
                  expect_gpx_points:int, expect_length:float, expect_duration:float,
-                 skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set()):
+                 skip_segments: set[int] = set(), skip_points: set[tuple[int, int]] = set(),
+                 additional_dirty_fields = set()):
         self.track = track
         self.expect_gpx_points = expect_gpx_points
         self.expect_length = expect_length
         self.expect_duration = expect_duration
         self.skip_segments = skip_segments
         self.skip_points = skip_points
+        self.expected_dirty_fields = {'track_segm_len', 'last_lat', 'last_long', 'last_update', 'length', 'duration'} | additional_dirty_fields
 
 
 smoke = Case(
@@ -72,9 +74,11 @@ general_idling = Case(
     expect_length = 79.7 + 89.0 + 71.2 + 74.7,
     expect_duration = 60.0 + 60.0,
     skip_segments={1},
+    additional_dirty_fields = {'track_segm_idx'}
 )
 
 
+# fixme: it is a wrong place for this function
 async def help_test_gpx_data(context, c: Case):
     await test_utils.help_test_gpx_data(context, c.track, c.expect_gpx_points,
             c.expect_length, c.expect_duration, c.skip_segments, c.skip_points)

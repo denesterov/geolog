@@ -20,3 +20,9 @@ def test_new_session():
 
 def test_smoke():
     tracker_test_utils.help_test_track(cases_data.smoke)
+
+def test_short_idling():
+    tracker_test_utils.help_test_track(cases_data.short_idling)
+
+def test_general_idling():
+    tracker_test_utils.help_test_track(cases_data.general_idling)
