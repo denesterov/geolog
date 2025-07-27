@@ -14,6 +14,10 @@ import uuid
 import db
 import maps
 
+import common
+import tracker
+
+
 logger = logging.getLogger('geobot-main')
 
 
@@ -31,72 +35,32 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
             msg = update.message
             new_location = True
 
-    if msg is not None:
-        logger.info(f'cmd_message. Location. new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
-        dt = msg.edit_date if msg.edit_date is not None else msg.date
-        common_ts = dt.timestamp() if dt else time.time()
-        sess_data = db.get_or_create_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
-        if new_location or update_session(sess_data, msg.location, common_ts):
-            db.store_location(sess_data, msg.from_user.id, msg.location, common_ts)
+    if msg is None:
+        return
 
-        usr_name = update.effective_user.first_name if update.effective_user else 'User'
-        if (new_location):
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
-        elif msg.location.live_period is None:
-            logger.info(f'cmd_message. Translation stopped. chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}')
-            db.add_map_job(sess_data['id'])
-            await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
+    logger.info(f'cmd_message. Location. new={new_location}, chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}, chat_type={msg.chat.type}, loc={msg.location}')
+    dt = msg.edit_date if msg.edit_date is not None else msg.date
+    common_ts = dt.timestamp() if dt else time.time()
+    sess_data = db.get_or_create_session(msg.from_user.id, msg.message_id, msg.chat, msg.location, common_ts)
 
+    sd = tracker.SessionData(sess_data)
+    points_to_write = tracker.PointsData()
+    tr = tracker.Tracker(sd, points_to_write)
+    tr.update(common.Point(msg.location.latitude, msg.location.longitude, common_ts), location_is_new=new_location)
+    for pnt in points_to_write.points:
+        db.store_location(sd, msg.from_user.id, pnt, common_ts)
 
-def update_session(sess_data, loc, common_ts):
-    sess_id = sess_data['id']
+    sess_upd = {sd.getattr(fld_name) for fld_name in sd.get_dirty_fields()}
+    if len(sess_upd) > 0:
+        db.update_session(sd.id, sess_upd)
 
-    track_segm_len = int(sess_data['track_segm_len'])
-
-    last_lat = float(sess_data['last_lat'])
-    last_long = float(sess_data['last_long'])
-    time_period = common_ts - float(sess_data['last_update'])
-    delta = distance.distance((last_lat, last_long), (loc.latitude, loc.longitude)).m
-    velocity = delta / time_period if time_period > 0.1 else 0.0
-
-    fields = {}
-
-    def finish_segment():
-        if track_segm_len == 0:
-            return
-        segm_id = int(sess_data['track_segm_idx'])
-        logger.info(f'update_session. finishing segment. sess_id={sess_id}, segm_id={segm_id}, prev_segm_len={track_segm_len}')
-        fields['track_segm_idx'] = segm_id + 1
-        fields['track_segm_len'] = 0
-
-    do_store_point = None
-    if delta < const.MIN_GEO_DELTA:
-        logger.info(f'update_session. skip coord update by idle. sess_id={sess_id}, delta={delta:.1f}, dt={time_period:.1f}') # todo: log debug
-        if time_period > const.AFTER_PAUSE_TIME:
-            finish_segment()
-            fields['last_update'] = common_ts
-        do_store_point = False
-    elif velocity > const.MAX_SPEED:
-        logger.info(f'update_session. skip coord update by overspeed. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}') # todo: log debug
-        finish_segment()
-        fields['last_lat'] = loc.latitude
-        fields['last_long'] = loc.longitude
-        fields['last_update'] = common_ts
-        do_store_point = False
-    else:
-        logger.info(f'update_session. writing update. sess_id={sess_id}, delta={delta:.1f}, vel={velocity:.1f}, dt={time_period:.1f}') # todo: log debug
-        fields['last_lat'] = loc.latitude
-        fields['last_long'] = loc.longitude
-        fields['last_update'] = common_ts
-        if track_segm_len > 0:
-            fields['length'] = float(sess_data['length']) + delta
-            fields['duration'] = float(sess_data['duration']) + time_period
-        fields['track_segm_len'] = track_segm_len + 1
-        do_store_point = True
-
-    if len(fields) > 0:
-        db.update_session(sess_id, fields)
-    return do_store_point
+    usr_name = update.effective_user.first_name if update.effective_user else 'User'
+    if new_location:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} started location recording.')
+    elif msg.location.live_period is None:
+        logger.info(f'cmd_message. Translation stopped. chat_id={msg.chat.id}, msg_id={msg.message_id}, usr_id={msg.from_user.id}')
+        db.add_map_job(sess_data['id'])
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f'{usr_name} stopped location recording.')
 
 
 def duration_to_human(dur: float):
@@ -124,8 +88,8 @@ def create_gpx_data(segments):
         segment = gpx_inst.tracks[0].segments[-1]
         for pnt in segm_points:
             wp = gpx.Waypoint()
-            wp.lat = pnt.lat
-            wp.lon = pnt.long
+            wp.lat = pnt.latitude
+            wp.lon = pnt.longitude
             wp.time = datetime.datetime.fromtimestamp(pnt.ts)
             segment.append(wp)
     

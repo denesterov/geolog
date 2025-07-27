@@ -32,7 +32,6 @@ def new_session_data_ex(usr_id, msg_id, tg_chat, loc, timestamp):
         lat=loc.latitude, long=loc.longitude, timestamp=timestamp)
 
 
-
 class SessionData:
     valid_data_fields = set(new_session_data(1, 1, 1).keys()) | {'id'}
     int_fields = {'track_segm_idx', 'track_segm_len'}
@@ -48,9 +47,17 @@ class SessionData:
         int_flds = SessionData.__dict__['int_fields']
         flt_flds = SessionData.__dict__['float_fields']
 
+        logger.info(f'SessionData.__getattr__. {name=}, {type(name)=}, {sess_data=}, {valid_data_fields=}') # debug
+
         assert name in valid_data_fields
-        if name in sess_data:
+
+        value = None
+        if isinstance(sess_data, dict) and name in sess_data.keys():
             value = sess_data[name]
+        else:
+            value = getattr(sess_data, name, None)
+
+        if value is not None:
             if name in int_flds:
                 value = int(value)
             elif name in flt_flds:
@@ -63,6 +70,10 @@ class SessionData:
         dirty = self.__dict__['dirty']
         sess_data[name] = value
         dirty.add(name)
+
+    def __getitem__(self, item):
+        value = getattr(self, item)
+        return value
 
     def get_dirty_fields(self):
         return self.__dict__['dirty']
@@ -95,8 +106,8 @@ class Tracker:
 
 
     def update_last_location(self, location: common.Point):
-        self.session.last_lat = location.lat
-        self.session.last_long = location.long
+        self.session.last_lat = location.latitude
+        self.session.last_long = location.longitude
         self.session.last_update = location.ts
 
 
@@ -110,7 +121,7 @@ class Tracker:
         timestamp = location.ts
 
         time_period = timestamp - self.session.last_update
-        delta = distance.distance((self.session.last_lat, self.session.last_long), (location.lat, location.long)).m
+        delta = distance.distance((self.session.last_lat, self.session.last_long), (location.latitude, location.longitude)).m
         velocity = delta / time_period if time_period > 0.1 else 0.0
 
         if delta < const.MIN_GEO_DELTA:
