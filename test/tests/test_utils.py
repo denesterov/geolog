@@ -47,7 +47,7 @@ def create_tg_location(latitude=45.2393, longitude=19.8412, live_period=3600):
 
 def create_tg_start_update(point: common.Point):
     result = create_tg_update()
-    result.message.location = create_tg_location(point.lat, point.long, live_period=3600)
+    result.message.location = create_tg_location(point.latitude, point.longitude, live_period=3600)
     result.message.date = datetime.datetime.fromtimestamp(point.ts)
     return result
 
@@ -64,7 +64,7 @@ def create_tg_location_update(prev_update: MagicMock, point: common.Point, final
     result.message.from_user.id = prev_update.message.from_user.id
     result.message.from_user.first_name = prev_update.message.from_user.first_name
 
-    result.message.location = create_tg_location(point.lat, point.long, live_period=None if final_point else 3600)
+    result.message.location = create_tg_location(point.latitude, point.longitude, live_period=None if final_point else 3600)
     result.message.edit_date = datetime.datetime.fromtimestamp(point.ts)
     result.edited_message = result.message
     return result

@@ -6,6 +6,7 @@ from redis.commands.search.indexDefinition import IndexDefinition, IndexType
 from redis.commands.search.query import Query
 import uuid
 import common
+import tracker
 from collections import namedtuple
 
 
@@ -105,31 +106,18 @@ def get_or_create_session(usr_id, msg_id, tg_chat, loc, common_ts):
     if res.total == 0:
         logger.info(f'Creating new session for usr_id={usr_id}')
         uid = f'session:{uuid.uuid1()}'
-        session = {
-            'usr_id' : usr_id,
-            'chat_id' : tg_chat.id,
-            'msg_id' : msg_id,
-            'chat_type' : 'PRIV' if tg_chat.type == 'private' else 'PUB',
-            'chat_name' : tg_chat.title if tg_chat.title is not None else (tg_chat.username if tg_chat.username is not None else '-'),
-            'ts' : common_ts,
-            'length' : 0.0,
-            'duration' : 0.0,
-            'last_update' : common_ts,
-            'last_lat' : loc.latitude,
-            'last_long' : loc.longitude,
-            'track_segm_idx' : 1,
-            'track_segm_len' : 1, # We assume that for a new session, the first point will be stored immediately
-        }
+
+        session = tracker.new_session_data_ex(usr_id, msg_id, tg_chat, loc, common_ts)
         # logger.info(f'get_or_create_session. DEBUG. session={session}')
         new_res = r.hset(uid, mapping=session)
         logger.info(f'get_or_create_session. New session. usr_id={usr_id}, uid={uid}, res={new_res}')
         session['id'] = uid
-        return session
+        return tracker.SessionData(session) # type tracker.SessionData
     else:
         assert res.total == 1
         doc = res.docs[0]
         logger.info(f'get_or_create_session. Found old session for usr_id={usr_id}, sess={doc}')
-        return doc
+        return doc # type redis.Document
 
 
 def update_session(sess_id, fields):
@@ -138,8 +126,8 @@ def update_session(sess_id, fields):
 
 
 def store_location(sess_data, usr_id, loc, common_ts):
-    sess_id = sess_data['id']
-    segm_id = sess_data['track_segm_idx']
+    sess_id = sess_data.id
+    segm_id = sess_data.track_segm_idx
 
     r = get_redis()
     uid = f'point:{uuid.uuid1()}'
