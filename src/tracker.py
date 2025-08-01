@@ -48,17 +48,15 @@ class SessionData:
         updates = self.__dict__['updates']
         valid_data_fields = SessionData.__dict__['valid_data_fields']
 
-        logger.info(f'SessionData.__getattr__. {name=}, {type(name)=}, {valid_data_fields=}') # debug
+        # logger.info(f'SessionData.__getattr__. {name=}, {type(name)=}, {valid_data_fields=}') # debug
 
         assert name in valid_data_fields
 
         value = None
         if name in updates:
-            logger.info(f'SessionData.__getattr__. {updates=}') # debug
             value = updates[name]
         else:
             sess_data = self.__dict__['data']
-            logger.info(f'SessionData.__getattr__. {sess_data=}') # debug
             if isinstance(sess_data, dict) and name in sess_data.keys():
                 value = sess_data[name]
             else:
@@ -79,11 +77,6 @@ class SessionData:
     def __setattr__(self, name, value):
         updates = self.__dict__['updates']
         updates[name] = value
-
-
-    def __getitem__(self, item):
-        value = getattr(self, item)
-        return value
 
 
     def get_updates(self):
