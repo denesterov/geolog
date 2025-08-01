@@ -25,8 +25,8 @@ def help_test_track(cs: cases_data.Case):
         for pnt in segm:
             tr.update(pnt, location_is_new=pnt is cs.track[0][0])
 
-    print(f'help_test_track. {sd.get_dirty_fields()=}')
-    assert sd.get_dirty_fields() == cs.expected_dirty_fields
+    print(f'help_test_track. {sd.get_updates()=}')
+    assert sd.get_updates().keys() == cs.expected_dirty_fields
 
     print(f'help_test_track. {sd.length=}, {sd.duration=}, {len(pd.points)=}')
     assert sd.length == pytest.approx(cs.expect_length, 1.0)

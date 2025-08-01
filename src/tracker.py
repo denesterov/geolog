@@ -37,46 +37,57 @@ class SessionData:
     int_fields = {'track_segm_idx', 'track_segm_len'}
     float_fields = {'ts', 'length', 'duration', 'last_update', 'last_lat', 'last_long'}
 
-    def __init__(self, session_data: dict):
-        self.__dict__['session_data'] = session_data
-        self.__dict__['dirty'] = set()
+
+    # session_data can be both dict and redis.Document (data fields as attributes, write is not possible)
+    def __init__(self, session_data):
+        self.__dict__['data'] = session_data
+        self.__dict__['updates'] = dict()
+
 
     def __getattr__(self, name):
-        sess_data = self.__dict__['session_data']
+        updates = self.__dict__['updates']
         valid_data_fields = SessionData.__dict__['valid_data_fields']
-        int_flds = SessionData.__dict__['int_fields']
-        flt_flds = SessionData.__dict__['float_fields']
 
-        logger.info(f'SessionData.__getattr__. {name=}, {type(name)=}, {sess_data=}, {valid_data_fields=}') # debug
+        logger.info(f'SessionData.__getattr__. {name=}, {type(name)=}, {valid_data_fields=}') # debug
 
         assert name in valid_data_fields
 
         value = None
-        if isinstance(sess_data, dict) and name in sess_data.keys():
-            value = sess_data[name]
+        if name in updates:
+            logger.info(f'SessionData.__getattr__. {updates=}') # debug
+            value = updates[name]
         else:
-            value = getattr(sess_data, name, None)
+            sess_data = self.__dict__['data']
+            logger.info(f'SessionData.__getattr__. {sess_data=}') # debug
+            if isinstance(sess_data, dict) and name in sess_data.keys():
+                value = sess_data[name]
+            else:
+                value = getattr(sess_data, name, None)
 
         if value is not None:
+            int_flds = SessionData.__dict__['int_fields']
+            flt_flds = SessionData.__dict__['float_fields']
             if name in int_flds:
                 value = int(value)
             elif name in flt_flds:
                 value = float(value)
             return value
+
         raise AttributeError(f"SessionData object has no attribute '{name}'")
 
+
     def __setattr__(self, name, value):
-        sess_data = self.__dict__['session_data']
-        dirty = self.__dict__['dirty']
-        sess_data[name] = value
-        dirty.add(name)
+        updates = self.__dict__['updates']
+        updates[name] = value
+
 
     def __getitem__(self, item):
         value = getattr(self, item)
         return value
 
-    def get_dirty_fields(self):
-        return self.__dict__['dirty']
+
+    def get_updates(self):
+        return self.__dict__['updates']
 
 
 
