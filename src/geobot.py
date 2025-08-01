@@ -50,9 +50,8 @@ async def cmd_message(update: telegram.Update, context: telegram.ext.ContextType
     for pnt in points_to_write.points:
         db.store_location(sd, msg.from_user.id, pnt, common_ts)
 
-    sess_upd = {sd.getattr(fld_name) for fld_name in sd.get_dirty_fields()}
-    if len(sess_upd) > 0:
-        db.update_session(sd.id, sess_upd)
+    if len(sd.get_updates()) > 0:
+        db.update_session(sd.id, sd.get_updates())
 
     usr_name = update.effective_user.first_name if update.effective_user else 'User'
     if new_location:

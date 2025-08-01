@@ -14,7 +14,7 @@ def test_new_session():
     p = common.Point(45.2393, 19.8412, 100500)
     tr, sd, pd = tracker_test_utils.create_basic_env(p)
     tr.update(p, location_is_new=True)
-    assert sd.get_dirty_fields() == set()
+    assert sd.get_updates() == dict()
     assert len(pd.points) == 1
 
 
