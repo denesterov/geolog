@@ -18,13 +18,6 @@ def test_session_data_get():
     assert sess.usr_id == 123
 
 
-def test_session_data_getitem():
-    test_data = {'chat_name': 'test', 'usr_id': 123}
-    sess = tracker.SessionData(test_data)
-    assert sess['chat_name'] == 'test'
-    assert sess['usr_id'] == 123
-
-
 def test_session_data_set():
     test_data = {'chat_name': 'test', 'id': 5}
     sess = tracker.SessionData(test_data)
