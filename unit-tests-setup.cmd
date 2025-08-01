@@ -2,7 +2,7 @@ python3 -m venv .venv
 
 call .venv/Scripts/activate
 
-set PYTHONPATH=src;test;test/tests
-pytest -v test/unit/ -c test/pytest.ini
+pip install -r src/requirements.txt
+pip install -r test/requirements-test.txt
 
 call .venv/Scripts/deactivate
