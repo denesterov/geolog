@@ -6,7 +6,7 @@
 	python3 -m venv .venv
 
 setup: .venv	
-	.venv/bin/activate; pip install -r src/requirements.txt
+	. .venv/bin/activate; pip install -r src/requirements.txt; deactivate
 
 cleanup:
 	rm -rf ./venv
@@ -21,11 +21,12 @@ run_env_token: .venv
 
 test: .venv
 	.venv/bin/activate; pip install -r test/requirements-test.txt; \
-	$env:PYTHONPATH="src"; pytest -v -c test/pytest.ini
+	env:PYTHONPATH="src"; pytest -v -c test/pytest.ini
 
 test-unit: .venv
-	.venv/bin/activate; pip install -r test/requirements-test.txt; \
-	$env:PYTHONPATH="src"; pytest -v test/unit/test_session_data.py -c test/pytest.ini
+	. .venv/bin/activate; pip install -r test/requirements-test.txt; \
+	PYTHONPATH='src:test:test/tests' pytest -v test/unit/ -c test/pytest.ini; \
+	deactivate
 
 test-docker:
 	cd test/docker && docker compose up --build --abort-on-container-exit --exit-code-from test
